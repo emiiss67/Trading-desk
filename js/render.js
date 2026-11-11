@@ -114,14 +114,16 @@ function paintHeader(state, actions) {
   const run = oneOf(snap?.desk?.run_state, ["live", "paused", "halted"]) || (snap ? "live" : "");
   const mode = oneOf(snap?.desk?.mode, ["live", "paper"]);
   const title = headerTitle(state);
-  top.replaceChildren(
+  top.classList.toggle("is-overlay", Boolean(state.overlay));
+  const parts = [];
+  if (state.overlay) {
+    parts.push(el("button", { type: "button", class: "back haptic", onclick: actions.back, "aria-label": "Back" }, [
+      icon("back"),
+      "Back",
+    ]));
+  }
+  parts.push(
     el("div", { class: "top-id" }, [
-      state.overlay
-        ? el("button", { type: "button", class: "back haptic", onclick: actions.back, "aria-label": "Back" }, [
-          icon("back"),
-          "Back",
-        ])
-        : null,
       el("p", { class: "kicker", text: "Desk" }),
       el("h1", { class: "title", text: title }),
       snap ? el("p", { class: "desk-name", text: str(snap.desk?.title, 80) || "Private desk" }) : el("p", { class: "desk-name", text: state.loading ? "Loading the file" : "Waiting" }),
@@ -149,6 +151,7 @@ function paintHeader(state, actions) {
       }, [icon("look")]),
     ]),
   );
+  top.replaceChildren(...parts);
 }
 
 function paintDock(state, actions) {
@@ -210,11 +213,17 @@ function coinButton(state, row, actions, extra = "") {
     ]),
     el("span", { class: "coin-side" }, [
       decision ? el("span", { class: `stamp ${decision}`, text: decisionLabel(decision) }) : null,
-      el("span", { class: "age", text: formatAge(row.created_at || row.scanned_at || row.at) }),
+      ageLabel(row.created_at || row.scanned_at || row.at),
     ]),
   ];
   if (!tappable) return el("div", { class: cls }, body);
   return el("button", { type: "button", class: cls, onclick: () => actions.openCoin(mint) }, body);
+}
+
+function ageLabel(iso) {
+  const age = formatAge(iso);
+  if (!age || age === "—") return null;
+  return el("span", { class: "age", text: age });
 }
 
 function metaLine(row) {
@@ -305,9 +314,10 @@ function positionCard(state, row, actions) {
 }
 
 function level(label, value) {
+  const missing = !value || value === "—";
   return el("div", {}, [
     el("dt", { text: label }),
-    el("dd", { text: value }),
+    missing ? el("dd", {}, [el("span", { class: "na", text: "n/a" })]) : el("dd", { text: value }),
   ]);
 }
 
@@ -425,12 +435,19 @@ function unitSecondary(text, currency) {
   return currency === "SOL" ? text : `${text} SOL`;
 }
 
+function figure(text, tone = "") {
+  if (!text || text === "—") {
+    return el("b", { class: `is-missing ${tone}`.trim() }, [el("span", { class: "na", text: "n/a" })]);
+  }
+  return el("b", { class: tone, text });
+}
+
 function meter(primary, label, secondary, id, pnl) {
   const tone = pnl == null ? "" : pnl < 0 ? "down" : "up";
   return el("div", { class: "meter", "data-meter": id }, [
-    el("b", { class: tone, text: primary || "—" }),
+    figure(primary, tone),
     el("span", { text: label }),
-    secondary ? el("small", { text: secondary }) : null,
+    secondary && secondary !== "—" ? el("small", { text: secondary }) : null,
   ]);
 }
 
@@ -508,11 +525,13 @@ function coinView(state, actions, rise) {
       coinIcon(coin?.icon || row.icon, symbol, name, state.link.base, true),
       el("div", {}, [
         el("h2", { text: name }),
-        el("p", { class: "coin-meta", text: [symbol, formatAge(coin?.created_at || row.created_at)].filter(Boolean).join(" · ") }),
+        el("p", { class: "coin-meta", text: [symbol, formatAge(coin?.created_at || row.created_at)].filter((bit) => bit && bit !== "—").join(" · ") }),
         decision ? el("p", { class: `stamp ${decision}`, text: decisionLabel(decision) }) : null,
       ]),
     ]),
-    el("p", { class: "price", text: priceText(state, price) }),
+    price == null
+      ? el("p", { class: "price is-missing" }, [el("span", { class: "na", text: "n/a" })])
+      : el("p", { class: "price", text: priceText(state, price) }),
     str(row.reason, 180) ? el("p", { class: "lede", text: str(row.reason, 180) }) : null,
     !entry || entry.status === "loading"
       ? skeleton(2)
@@ -525,14 +544,15 @@ function coinView(state, actions, rise) {
 }
 
 function detailBody(state, actions, coin, tf) {
-  const stats = [
-    ["Market cap", formatCompactUsd(num(coin.market_cap_usd))],
-    ["Liquidity", formatCompactUsd(num(coin.liquidity_usd))],
-    ["Holders", num(coin.holders) == null ? "—" : formatQty(num(coin.holders))],
-    ["Top holder", num(coin.top_holder_pct) == null ? "—" : `${formatSolAmount(num(coin.top_holder_pct), {})}%`.replace(/^/, "") ],
-  ];
+  const stats = [];
+  const mcap = num(coin.market_cap_usd);
+  const liq = num(coin.liquidity_usd);
+  const holders = num(coin.holders);
   const top = num(coin.top_holder_pct);
-  stats[3][1] = top == null ? "—" : `${top.toLocaleString("en-US", { maximumFractionDigits: 1 })}%`;
+  if (mcap != null) stats.push(["Market cap", formatCompactUsd(mcap)]);
+  if (liq != null) stats.push(["Liquidity", formatCompactUsd(liq)]);
+  if (holders != null) stats.push(["Holders", formatQty(holders)]);
+  if (top != null) stats.push(["Top holder", `${top.toLocaleString("en-US", { maximumFractionDigits: 1 })}%`]);
   const region = el("div", { class: "chart-region", "data-chart-region": "1" });
   const links = externalLinks(coin.mint);
   queueMicrotask(() => hydrateChart(region, state, actions, coin, tf));
@@ -544,10 +564,12 @@ function detailBody(state, actions, coin, tf) {
       onclick: () => actions.setTimeframe(id),
     }, [id]))),
     region,
-    el("div", { class: "stats" }, stats.map(([label, value]) => el("div", { class: "stat" }, [
-      el("span", { text: label }),
-      el("b", { text: value }),
-    ]))),
+    stats.length
+      ? el("div", { class: "stats" }, stats.map(([label, value]) => el("div", { class: "stat" }, [
+        el("span", { text: label }),
+        el("b", { text: value }),
+      ])))
+      : null,
     el("h2", { class: "section-label", text: "Gates" }),
     gateList(coin.gates),
     tradeList(coin.trades),

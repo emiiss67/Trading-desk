@@ -394,8 +394,9 @@ function bindPull() {
     const node = pull();
     if (!node || dy < 10 || main.scrollTop > 2) return;
     node.hidden = false;
-    node.style.height = `${Math.min(44, dy * 0.35)}px`;
-    node.textContent = dy > 78 ? "Release to refresh" : "Pull to refresh";
+    node.style.height = `${Math.min(56, dy * 0.42)}px`;
+    node.classList.toggle("is-armed", dy > 78);
+    node.textContent = dy > 78 ? "Release" : "Pull";
   }, { passive: true });
   const end = () => {
     const node = pull();
@@ -403,6 +404,7 @@ function bindPull() {
       node.hidden = true;
       node.style.height = "0px";
       node.textContent = "";
+      node.classList.remove("is-armed");
     }
     if (active && dy > 78) refresh();
     active = false;

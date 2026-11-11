@@ -48,7 +48,8 @@ export function coinIcon(url, symbol, name, base, eager = false) {
   const wrap = el("span", { class: "coin-icon", "aria-hidden": "true" });
   const [a, b] = avatarColors(symbol || name || url);
   const face = el("span", { class: "avatar", text: initials(symbol, name) });
-  face.style.background = `linear-gradient(145deg, ${a}, ${b})`;
+  face.style.setProperty("--a", a);
+  face.style.setProperty("--b", b);
   wrap.append(face);
   const safe = safeImageUrl(url, base);
   if (safe) {
