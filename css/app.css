@@ -152,6 +152,27 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 }
 .lock p { margin: 0; max-width: 18em; color: var(--muted); font-size: 17px; line-height: 1.45; }
 .lock-bad { margin-top: 14px !important; color: var(--bad) !important; }
+.unlock { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-top: 22px; width: min(100%, 22rem); }
+.unlock label { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--faint); }
+.unlock-input {
+  width: 100%;
+  margin: 0;
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 16px;
+}
+.unlock-input::placeholder { color: var(--faint); }
+.unlock-btn {
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: 999px;
+  padding: 10px 18px;
+}
 
 .shell {
   height: 100dvh;

@@ -67,6 +67,14 @@ function bucket() {
   }
 }
 
+export function parsePrivateLink(value) {
+  const text = typeof value === "string" ? value.replace(/[\u0000-\u001F\u007F]/g, "").trim() : "";
+  if (!text) return { ok: false, reason: "empty" };
+  const hashAt = text.lastIndexOf("#");
+  if (hashAt >= 0) return parseLinkHash(text.slice(hashAt));
+  return parseLinkHash(`#${text}`);
+}
+
 export function linkHash(link) {
   return `#d=${encodeBase64Url(link.base)}&k=${link.key}`;
 }

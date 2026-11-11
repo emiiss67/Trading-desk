@@ -800,7 +800,7 @@ function mainView(state, actions) {
 export function paintApp(root, state, actions, opts = {}) {
   destroyCharts();
   if (!state.link) {
-    root.replaceChildren(lockScreen(state));
+    root.replaceChildren(lockScreen(state, actions));
     return;
   }
   if (!document.getElementById("shell")) root.replaceChildren(shell(actions));
@@ -829,11 +829,36 @@ export function paintApp(root, state, actions, opts = {}) {
   if (state.tab === "positions" || state.overlay?.type === "coin") state.flashes = new Map();
 }
 
-function lockScreen(state) {
+function lockScreen(state, actions) {
   return el("section", { class: "lock" }, [
     el("p", { class: "kicker", text: "Private" }),
     el("h1", { text: "Desk" }),
     el("p", { text: "This phone is locked. Open the private link in Safari first, then Share > Add to Home Screen." }),
-    state.invalidHash ? el("p", { class: "lock-bad", text: "This link isn’t valid. Ask for a new one in Telegram." }) : null,
+    el("form", {
+      class: "unlock",
+      onsubmit: (event) => {
+        event.preventDefault();
+        actions.unlock(event.currentTarget.elements.link.value);
+      },
+    }, [
+      el("label", { for: "private-link", text: "Private link" }),
+      el("input", {
+        id: "private-link",
+        name: "link",
+        class: "unlock-input",
+        type: "text",
+        inputmode: "url",
+        autocomplete: "off",
+        autocapitalize: "off",
+        autocorrect: "off",
+        spellcheck: "false",
+        enterkeyhint: "go",
+        placeholder: "https://…/#d=…&k=…",
+        value: state.unlockDraft || "",
+      }),
+      el("button", { type: "submit", class: "unlock-btn haptic", text: "Unlock" }),
+    ]),
+    state.unlockError ? el("p", { class: "lock-bad", role: "alert", text: state.unlockError }) : null,
+    state.invalidHash && !state.unlockError ? el("p", { class: "lock-bad", text: "This link isn’t valid. Ask for a new one in Telegram." }) : null,
   ]);
 }
