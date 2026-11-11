@@ -16,7 +16,7 @@ import {
 import { coinIcon, icon } from "./icons.js";
 import { ACCENTS, BACKGROUNDS, CHART_STYLES, FONT_FACES, PARTICLE_STYLES, THEMES, TIMEFRAMES } from "./settings.js";
 import { mountCandles, mountMarkedLine, mountSpark } from "./charts.js";
-import { curvePoints, entryPrice, iconField, iconSources, portfolioUsd, tradeLevels } from "./fields.js";
+import { curvePoints, entryPrice, iconField, iconSources, looksTechnical, marketCapLabel, plainReason, portfolioUsd, telegramTradeUrl, tradeLevels } from "./fields.js";
 import { safeImageUrl } from "./api.js";
 import { candlesFromCoin, normalizeTrades } from "./series.js";
 import { countUp, effectsAllowed } from "./effects.js";
@@ -63,10 +63,18 @@ function flashClass(state, mint) {
   return dir === "up" ? "flash-up" : dir === "down" ? "flash-down" : "";
 }
 
+function coinDecision(row) {
+  const decision = oneOf(row?.decision, ["bought", "rejected", "watching", "deferred"]);
+  const status = oneOf(row?.status, ["bought", "rejected", "watching", "deferred"]);
+  if (decision === "deferred" || status === "deferred") return "deferred";
+  return decision || (status === "deferred" ? status : decision);
+}
+
 function decisionLabel(decision) {
   if (decision === "bought") return "Bought";
   if (decision === "rejected") return "Rejected";
   if (decision === "watching") return "Watching";
+  if (decision === "deferred") return "Checking again soon";
   return "Noted";
 }
 
@@ -190,15 +198,18 @@ function sampleRibbon(snapshot) {
 function coinButton(state, row, actions, extra = "") {
   const mint = row.mint;
   const tappable = isMint(mint);
-  const decision = oneOf(row.decision, ["bought", "rejected", "watching"]);
+  const decision = coinDecision(row);
   const glow = state.glowIds?.has(str(row.id, 80)) ? "is-new-buy" : "";
   const cls = ["coin-row", "haptic", decision, flashClass(state, mint), glow, extra].filter(Boolean).join(" ");
+  const plain = plainReason(row);
+  const reason = decision === "deferred" ? (plain && plain !== "Checking again soon" ? plain : "") : plain;
   const body = [
     coinIcon(iconField(row), row.symbol, row.name, state.link.base),
     el("span", { class: "coin-copy" }, [
       el("span", { class: "coin-name", text: str(row.name, 48) || "Unnamed" }),
       el("span", { class: "coin-meta", text: metaLine(row) }),
-      str(row.reason, 160) ? el("span", { class: "coin-reason", text: str(row.reason, 160) }) : null,
+      el("span", { class: "coin-cap", text: `Mcap ${marketCapLabel(capSource(state, row))}` }),
+      reason ? el("span", { class: "coin-reason", text: reason }) : null,
     ]),
     el("span", { class: "coin-side" }, [
       decision ? el("span", { class: `stamp ${decision}`, text: decisionLabel(decision) }) : null,
@@ -216,31 +227,39 @@ function ageLabel(iso) {
 }
 
 function metaLine(row) {
-  const symbol = str(row.symbol, 12);
-  const cap = num(row.market_cap_usd);
-  const bits = [symbol, cap == null ? "" : formatCompactUsd(cap)].filter(Boolean);
-  return bits.join(" · ");
+  return str(row.symbol, 12);
+}
+
+function capSource(state, row) {
+  if (num(row?.market_cap_usd) != null || row?.market_cap_pending === true || row?.market_cap_pending === false) return row;
+  const lists = [state.snapshot?.scanned, state.snapshot?.positions];
+  for (const list of lists) {
+    if (!Array.isArray(list)) continue;
+    const found = list.find((item) => item?.mint && item.mint === row?.mint && (num(item.market_cap_usd) != null || item.market_cap_pending != null));
+    if (found) return found;
+  }
+  return row;
 }
 
 function scanView(state, actions, rise) {
   const rows = sortedScanned(state.snapshot);
   const q = state.query.trim().toLowerCase();
   const filtered = rows.filter((row) => {
-    const decision = oneOf(row.decision, ["bought", "rejected", "watching"]);
+    const decision = coinDecision(row);
     if (state.filter !== "all" && decision !== state.filter) return false;
     if (!q) return true;
-    const hay = [row.name, row.symbol, row.mint, row.reason].map((bit) => str(bit, 80).toLowerCase()).join(" ");
+    const hay = [row.name, row.symbol, row.mint, plainReason(row)].map((bit) => str(bit, 80).toLowerCase()).join(" ");
     return hay.includes(q);
   });
-  const counts = { all: rows.length, bought: 0, rejected: 0, watching: 0 };
+  const counts = { all: rows.length, bought: 0, rejected: 0, watching: 0, deferred: 0 };
   for (const row of rows) {
-    const decision = oneOf(row.decision, ["bought", "rejected", "watching"]);
+    const decision = coinDecision(row);
     if (decision) counts[decision] += 1;
   }
   return el("section", { class: rise ? "rise" : "", "data-view": "scan" }, [
     sampleRibbon(state.snapshot),
-    el("div", { class: "filters" }, ["all", "bought", "watching", "rejected"].map((id) => {
-      const label = id === "all" ? "All" : decisionLabel(id);
+    el("div", { class: "filters" }, ["all", "bought", "watching", "deferred", "rejected"].map((id) => {
+      const label = id === "all" ? "All" : id === "deferred" ? "Soon" : decisionLabel(id);
       return el("button", {
         type: "button",
         class: "chip haptic",
@@ -286,6 +305,7 @@ function positionCard(state, row, actions) {
       el("span", {}, [
         el("span", { class: "coin-name", text: str(row.name, 48) || "Unnamed" }),
         el("span", { class: "coin-meta", text: [str(row.symbol, 12), num(row.qty_tokens) == null ? "" : `${formatQty(num(row.qty_tokens))} tokens`].filter(Boolean).join(" · ") }),
+        el("span", { class: "coin-cap", text: `Mcap ${marketCapLabel(capSource(state, row))}` }),
       ]),
       pnl == null ? null : el("span", { class: pnl < 0 ? "pnl down" : "pnl up", text: [
         pair.primary,
@@ -298,7 +318,9 @@ function positionCard(state, row, actions) {
       level("Now", priceText(state, num(row.mark_usd))),
       level("Stop", priceText(state, num(row.stop_usd))),
       level("Target", priceText(state, num(row.take_profit_usd))),
+      level("Mcap", marketCapLabel(capSource(state, row)) === "Updating…" ? "Updating…" : marketCapLabel(capSource(state, row))),
     ]),
+    isMint(mint) ? tradeControls(state, actions, mint) : null,
   ]);
 }
 
@@ -476,8 +498,8 @@ function positionsCard(state, actions) {
 function scannerCard(snap) {
   const rows = sortedScanned(snap);
   if (!rows.length) return null;
-  const rejected = rows.filter((row) => oneOf(row.decision, ["bought", "rejected", "watching"]) === "rejected");
-  const passed = rows.filter((row) => oneOf(row.decision, ["bought", "rejected", "watching"]) === "bought");
+  const rejected = rows.filter((row) => coinDecision(row) === "rejected");
+  const passed = rows.filter((row) => coinDecision(row) === "bought");
   return el("section", { class: "panel" }, [
     el("h2", { text: "Scanner" }),
     el("div", { class: "metrics" }, [
@@ -485,13 +507,13 @@ function scannerCard(snap) {
       el("div", {}, [el("b", { text: String(passed.length) }), el("span", { text: "passed" })]),
       el("div", {}, [el("b", { text: String(rejected.length) }), el("span", { text: "rejected" })]),
     ]),
-    ...rejected.slice(0, 4).map((row) => str(row.reason, 80) ? el("p", { class: "reason", text: `${str(row.symbol, 8)} · ${str(row.reason, 80)}` }) : null),
+    ...rejected.slice(0, 4).map((row) => plainReason(row) ? el("p", { class: "reason", text: `${str(row.symbol, 8)} · ${plainReason(row)}` }) : null),
   ]);
 }
 
 function recentCard(state, actions) {
   const rows = sortedScanned(state.snapshot).filter((row) => {
-    const decision = oneOf(row.decision, ["bought", "rejected", "watching"]);
+    const decision = coinDecision(row);
     return decision === "bought" || decision === "rejected";
   }).slice(0, 6);
   if (!rows.length) return null;
@@ -505,9 +527,9 @@ function recentCard(state, actions) {
       coinIcon(iconField(row), row.symbol, row.name, state.link.base),
       el("span", {}, [
         el("b", { text: `$${str(row.symbol, 8)}` }),
-        str(row.reason, 80) ? el("small", { text: str(row.reason, 80) }) : null,
+        plainReason(row) ? el("small", { text: plainReason(row) }) : null,
       ]),
-      el("em", { class: oneOf(row.decision, ["bought", "rejected"]) === "bought" ? "up" : "down", text: decisionLabel(oneOf(row.decision, ["bought", "rejected", "watching"])) }),
+      el("em", { class: coinDecision(row) === "bought" ? "up" : "down", text: decisionLabel(coinDecision(row)) }),
     ])),
   ]);
 }
@@ -692,44 +714,43 @@ function coinView(state, actions, rise) {
   const name = str(coin?.name, 60) || str(row.name, 60) || "Coin";
   const symbol = str(coin?.symbol, 12) || str(row.symbol, 12);
   const price = num(coin?.price_usd) ?? num(row.mark_usd) ?? num(row.price_usd);
-  const decision = oneOf(row.decision, ["bought", "rejected", "watching"]);
+  const decision = coinDecision({ ...row, ...coin });
   const tf = state.timeframe || state.settings.timeframe;
+  const plain = plainReason({ reason_plain: coin?.reason_plain || row.reason_plain, reason: coin?.reason || row.reason });
+  const reason = decision === "deferred" ? (plain && plain !== "Checking again soon" ? plain : "") : plain;
   return el("article", { class: `detail ${rise ? "rise" : ""} ${flashClass(state, mint)}` }, [
     el("header", { class: "hero" }, [
       coinIcon(iconField(coin) || iconField(row), symbol, name, state.link.base, true),
       el("div", {}, [
         el("h2", { text: name }),
         el("p", { class: "coin-meta", text: [symbol, formatAge(coin?.created_at || row.created_at)].filter((bit) => bit && bit !== "—").join(" · ") }),
+        el("p", { class: "coin-cap", text: `Mcap ${marketCapLabel(capSource(state, { ...row, ...coin }))}` }),
         decision ? el("p", { class: `stamp ${decision}`, text: decisionLabel(decision) }) : null,
       ]),
     ]),
-    price == null
-      ? el("p", { class: "price is-missing" }, [el("span", { class: "na", text: "n/a" })])
-      : el("p", { class: "price", text: priceText(state, price) }),
-    str(row.reason, 180) ? el("p", { class: "lede", text: str(row.reason, 180) }) : null,
+    price == null ? null : el("p", { class: "price", text: priceText(state, price) }),
+    reason ? el("p", { class: "lede", text: reason }) : null,
     !entry || entry.status === "loading"
       ? skeleton(2)
       : entry.status === "missing"
         ? notice("This coin has no detail file yet.")
         : entry.status === "error"
           ? notice("The coin file could not be read.", () => actions.reloadCoin(mint))
-          : detailBody(state, actions, coin, tf),
+          : detailBody(state, actions, coin, row, tf),
   ]);
 }
 
-function detailBody(state, actions, coin, tf) {
-  const stats = [];
-  const mcap = num(coin.market_cap_usd);
+function detailBody(state, actions, coin, row, tf) {
+  const stats = [["Market cap", marketCapLabel(capSource(state, { ...row, ...coin }))]];
   const liq = num(coin.liquidity_usd);
   const holders = num(coin.holders);
   const top = num(coin.top_holder_pct);
-  if (mcap != null) stats.push(["Market cap", formatCompactUsd(mcap)]);
   if (liq != null) stats.push(["Liquidity", formatCompactUsd(liq)]);
   if (holders != null) stats.push(["Holders", formatQty(holders)]);
   if (top != null) stats.push(["Top holder", `${top.toLocaleString("en-US", { maximumFractionDigits: 1 })}%`]);
   const region = el("div", { class: "chart-region", "data-chart-region": "1" });
   const links = externalLinks(coin.mint);
-  queueMicrotask(() => hydrateChart(region, state, actions, coin, tf));
+  queueMicrotask(() => hydrateChart(region, state, coin, tf));
   return el("div", {}, [
     el("div", { class: "tf" }, TIMEFRAMES.map((id) => el("button", {
       type: "button",
@@ -738,29 +759,31 @@ function detailBody(state, actions, coin, tf) {
       onclick: () => actions.setTimeframe(id),
     }, [id]))),
     region,
-    stats.length
-      ? el("div", { class: "stats" }, stats.map(([label, value]) => el("div", { class: "stat" }, [
-        el("span", { text: label }),
-        el("b", { text: value }),
-      ])))
-      : null,
-    el("h2", { class: "section-label", text: "Gates" }),
-    gateList(coin.gates),
+    block("Stats", el("div", { class: "stats" }, stats.map(([label, value]) => el("div", { class: "stat" }, [
+      el("span", { text: label }),
+      el("b", { text: value }),
+    ])))),
+    block("Gates", gateList(coin.gates)),
     tradeList(coin.trades),
-    el("h2", { class: "section-label", text: "Links" }),
-    el("div", { class: "links" }, links.map((link) => el("a", {
+    block("Links", el("div", { class: "links" }, links.map((link) => el("a", {
       href: link.href,
       target: "_blank",
       rel: "noopener noreferrer",
       text: link.label,
-    }))),
-    el("h2", { class: "section-label", text: "Contract" }),
-    el("div", { class: "ca" }, [
-      el("code", { class: "mint", text: isMint(coin.mint) ? coin.mint : "—" }),
+    })))),
+    block("Contract", el("div", { class: "ca" }, [
+      el("code", { class: "mint", text: isMint(coin.mint) ? coin.mint : "" }),
       isMint(coin.mint)
         ? el("button", { type: "button", class: "copy haptic", onclick: () => actions.copy(coin.mint), text: "Copy" })
         : null,
-    ]),
+    ])),
+  ]);
+}
+
+function block(title, child) {
+  return el("section", { class: "block" }, [
+    el("h2", { class: "section-label", text: title }),
+    child,
   ]);
 }
 
@@ -779,80 +802,89 @@ function gateList(gates) {
   return el("ul", { class: "gates" }, rows.slice(0, 24).map((gate) => {
     const pass = gate?.pass === true;
     const fail = gate?.pass === false;
+    const label = plainBit(gate?.label) || plainBit(gate?.id) || "Gate";
+    const detail = plainReason(gate) || plainBit(gate?.detail);
     return el("li", { class: "gate" }, [
-      el("strong", { text: str(gate?.label, 40) || str(gate?.id, 40) || "Gate" }),
-      el("em", { class: `flag ${pass ? "pass" : fail ? "fail" : "unknown"}`, text: pass ? "Pass" : fail ? "Fail" : "—" }),
-      str(gate?.detail, 200) ? el("p", { text: str(gate.detail, 200) }) : null,
+      el("strong", { text: label }),
+      pass || fail ? el("em", { class: `flag ${pass ? "pass" : "fail"}`, text: pass ? "Pass" : "Fail" }) : null,
+      detail ? el("p", { text: detail }) : null,
     ]);
   }));
+}
+
+function plainBit(value) {
+  const text = str(value, 80);
+  if (!text || looksTechnical(text)) return "";
+  return text;
 }
 
 function tradeList(trades) {
   const rows = normalizeTrades(trades);
   if (!rows.length) return null;
-  return el("div", {}, [
-    el("h2", { class: "section-label", text: "Our trades" }),
-    el("ul", { class: "trades" }, rows.map((trade) => el("li", {}, [
+  return block("Our trades", el("ul", { class: "trades" }, rows.map((trade) => el("li", {}, [
       el("span", { class: trade.side, text: trade.side === "sell" ? "Sell" : "Buy" }),
       el("span", { text: formatVilnius(new Date(trade.t * 1000).toISOString()) }),
       el("span", { text: formatPrice(trade.price) }),
-    ]))),
-  ]);
+    ]))));
 }
 
-function hydrateChart(region, state, actions, coin, tf) {
+function hydrateChart(region, state, coin, tf) {
   if (!region.isConnected) return;
   const local = candlesFromCoin(coin, tf);
-  const formatPriceFn = (value) => priceText(state, value);
+  if (local.length < 2) {
+    region.replaceChildren(el("p", { class: "chart-status", text: "Not enough trades yet" }));
+    return;
+  }
   const formatTime = (unix) => formatVilniusClock(unix);
   formatTime.full = (unix) => formatVilnius(new Date(unix * 1000).toISOString());
-    const levels = levelsFor(state, coin);
-    if (local.length) {
-      paintChart(region, local, normalizeTrades(coin.trades), {
-        formatPrice: formatPriceFn,
-        formatTime,
-        timeframe: tf,
-        source: "Candles from the desk file",
-        levels,
-      });
-      return;
-    }
-  region.replaceChildren(el("p", { class: "chart-status", text: "Loading the public chart…" }));
-  actions.getCandles(coin.mint, tf, coin).then((result) => {
-    if (!region.isConnected) return;
-    if (result.candles?.length) {
-      paintChart(region, result.candles, normalizeTrades(coin.trades), {
-        formatPrice: formatPriceFn,
-        formatTime,
-        timeframe: tf,
-        source: "Public chart via GeckoTerminal",
-        levels: levelsFor(state, coin),
-      });
-      const last = result.candles[result.candles.length - 1];
-      region.append(el("p", { class: "quiet", text: `Last public print ${formatPriceFn(last.c)}` }));
-      return;
-    }
-    const copy = result.error === "rate"
-      ? "GeckoTerminal is busy. The rest of this coin is fine."
-      : result.error === "missing"
-        ? "No public pool was found for this mint."
-        : "The public chart did not load.";
-    region.replaceChildren(notice(copy, () => {
-      actions.clearCandles(coin.mint, tf);
-      hydrateChart(region, state, actions, coin, tf);
-    }));
-  }).catch(() => {
-    if (!region.isConnected) return;
-    region.replaceChildren(notice("The public chart did not load.", () => {
-      actions.clearCandles(coin.mint, tf);
-      hydrateChart(region, state, actions, coin, tf);
-    }));
+  paintChart(region, local, normalizeTrades(coin.trades), {
+    formatPrice: (value) => priceText(state, value),
+    formatTime,
+    timeframe: tf,
+    source: "Desk candles",
+    levels: levelsFor(state, coin),
   });
 }
 
 function levelsFor(state, coin) {
-  const position = (state.snapshot?.positions || []).find((row) => row?.mint === coin?.mint) || {};
+  const position = (state.snapshot?.positions || []).find((row) => row?.mint === coin?.mint);
+  if (!position) return [];
   return tradeLevels(entryPrice(coin, position), { ...coin, ...position });
+}
+
+const BUY_AMOUNTS = [0.02, 0.05, 0.1];
+const SELL_PCTS = [25, 50, 100];
+
+function tradeControls(state, actions, mint) {
+  const side = state.tradePick?.mint === mint ? state.tradePick.side : "";
+  const note = el("p", { class: "trade-note", text: "You confirm the trade in Telegram. This phone holds no keys." });
+  if (!isMint(mint)) return el("div", { class: "quick" }, [note]);
+  if (side === "buy" || side === "sell") {
+    const choices = side === "buy" ? BUY_AMOUNTS : SELL_PCTS;
+    return el("div", { class: "quick" }, [
+      el("div", { class: "trade-picks" }, choices.map((amount) => el("a", {
+        class: "trade-pick haptic",
+        href: telegramTradeUrl(side, mint, amount),
+        target: "_blank",
+        rel: "noopener noreferrer",
+        text: side === "buy" ? `${amount} SOL` : `${amount}%`,
+      }))),
+      el("button", {
+        type: "button",
+        class: "trade-cancel haptic",
+        onclick: () => actions.setTradePick(null, null),
+        text: "Cancel",
+      }),
+      note,
+    ]);
+  }
+  return el("div", { class: "quick" }, [
+    el("div", { class: "trade-actions" }, [
+      el("button", { type: "button", class: "trade-buy haptic", onclick: () => actions.setTradePick(mint, "buy"), text: "Buy" }),
+      el("button", { type: "button", class: "trade-sell haptic", onclick: () => actions.setTradePick(mint, "sell"), text: "Sell" }),
+    ]),
+    note,
+  ]);
 }
 
 function paintChart(region, candles, trades, opts) {
@@ -1045,6 +1077,8 @@ export function paintApp(root, state, actions, opts = {}) {
   if (!document.getElementById("shell")) root.replaceChildren(shell(actions));
   paintHeader(state, actions);
   paintDock(state, actions);
+  paintTrade(state, actions);
+  document.getElementById("shell")?.classList.toggle("has-trade", state.overlay?.type === "coin");
   const main = document.getElementById("main");
   const view = document.getElementById("view");
   const typing = opts.keepFocus && document.activeElement?.id === "q";
@@ -1066,6 +1100,19 @@ export function paintApp(root, state, actions, opts = {}) {
   if (opts.keepScroll) main.scrollTop = y;
   else main.scrollTop = 0;
   if (state.tab === "positions" || state.overlay?.type === "coin") state.flashes = new Map();
+}
+
+function paintTrade(state, actions) {
+  const shell = document.getElementById("shell");
+  if (!shell) return;
+  const existing = document.getElementById("tradebar");
+  if (state.overlay?.type !== "coin") {
+    existing?.remove();
+    return;
+  }
+  const bar = existing || el("div", { id: "tradebar", class: "tradebar" });
+  if (!existing) shell.append(bar);
+  bar.replaceChildren(tradeControls(state, actions, state.overlay.mint));
 }
 
 function lockScreen(state, actions) {

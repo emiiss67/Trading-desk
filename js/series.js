@@ -18,20 +18,20 @@ export function normalizeCandles(rows) {
   const out = [];
   for (const row of rows.slice(0, 1000)) {
     if (!row || typeof row !== "object") continue;
-    const t = num(row.t);
-    const o = num(row.o);
-    const h = num(row.h);
-    const l = num(row.l);
-    const c = num(row.c);
-    const v = num(row.v);
-    if ([t, o, h, l, c, v].some((value) => value == null)) continue;
+    const t = num(row.time ?? row.t);
+    const o = num(row.open ?? row.o);
+    const h = num(row.high ?? row.h);
+    const l = num(row.low ?? row.l);
+    const c = num(row.close ?? row.c);
+    const v = num(row.volume_usd ?? row.volume ?? row.v);
+    if ([t, o, h, l, c].some((value) => value == null)) continue;
     out.push({
       t: t > 1e12 ? Math.floor(t / 1000) : t,
       o,
       h: Math.max(h, o, c),
       l: Math.min(l, o, c),
       c,
-      v: Math.max(0, v),
+      v: v == null ? 0 : Math.max(0, v),
     });
   }
   out.sort((a, b) => a.t - b.t);

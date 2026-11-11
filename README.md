@@ -105,7 +105,7 @@ Regenerate the committed fixture with `python3 tools/make_sample.py`. Those file
 | `positions[]` | positions | Open book |
 | `activity[]` | fills | Buys and sells |
 
-Coin ref: `mint`, `name`, `symbol`, `icon`, `scanned_at`, `created_at`, `decision` (`bought` \| `rejected` \| `watching`), `reason`, `price_usd`, `market_cap_usd`.
+Coin ref: `mint`, `name`, `symbol`, `icon` or `icon_url` (HTTPS), `scanned_at`, `created_at`, `decision` (`bought` \| `rejected` \| `watching` \| `deferred`), `reason_plain`, `price_usd`, `market_cap_usd`, `market_cap_pending`. A deferred coin (`decision` or `status` of `deferred`) is shown as “Checking again soon”.
 
 Position: `mint`, `name`, `symbol`, `icon`, `qty_tokens`, `entry_usd`, `mark_usd`, `cost_usd`, `value_usd`, `pnl_usd`, `pnl_pct`, `stop_usd`, `take_profit_usd`, `opened_at`.
 
@@ -121,25 +121,28 @@ Fill: `id`, `mint`, `name`, `symbol`, `icon`, `side` (`buy` \| `sell`), `at`, `q
 | --- | --- | --- |
 | `schema_version` | number | `1` |
 | `name`, `symbol`, `icon`, `created_at` | | |
-| `price_usd`, `market_cap_usd`, `liquidity_usd` | number | |
+| `price_usd`, `liquidity_usd` | number | |
+| `market_cap_usd` | number or null | Shown on the list, the detail page, and open positions. Null with `market_cap_pending` shows “Updating…”. |
+| `market_cap_pending` | boolean | |
+| `icon_url` | string | HTTPS image. The initials badge is used only if that image errors. |
+| `reason_plain` | string | The only reason text the phone shows. Strings such as `source=`, `authorities=`, and `extensions=` are dropped. |
 | `holders` | number | |
 | `top_holder_pct` | number | Percent, not a fraction |
-| `pool` | string | Optional GeckoTerminal pool address. If omitted, the app looks up a Solana pool |
-| `gates[]` | objects | `id`, `label`, `pass` (boolean), `detail` |
+| `gates[]` | objects | `id`, `label`, `pass` (boolean), `detail` or `reason_plain` |
 | `trades[]` | objects | `at`, `side`, `price_usd`, `tx`. Drawn on the chart |
-| `candles` | object | Keys `1m`, `5m`, `15m`, `1h`. Each value is `[{ "t", "o", "h", "l", "c", "v" }]`. `t` is unix seconds, `v` is volume. Empty or missing series fall back to GeckoTerminal |
+| `candles` | object | Keys `1m`, `5m`, `15m`, `1h`. Each candle is `{ "time" or "t", "open" or "o", "high" or "h", "low" or "l", "close" or "c", "volume_usd" or "v" }`. `time` is unix seconds. Fewer than two candles shows “Not enough trades yet”. |
 
 Links to pump.fun, Solscan, and DexScreener are built from the mint. URLs inside the JSON are not used as link targets.
 
 ## Phone UI
 
 - **Home** is the book: a large portfolio value (no separate P&L figure), small pills for capital in, trade count, multiplier, and today’s percent when those fields exist, and a glowing portfolio line. The line has a dashed “put in” baseline from `equity.start_usd`, an end dot, and coin-icon tags for each fill (`Buy` plus size, or the sell’s `pnl_usd`). Tags step onto extra lanes when they would overlap. Wallet SOL is shown with an EUR value from `wallet.sol_eur`, or from CoinGecko when that field is missing. Open positions, scanner counts from `scanned[]`, recent bought and rejected coins with their reasons, a value sparkline from the equity curve, and a decisions feed from `activity` sit on the same screen. LIVE / 1H / 4H / 1D / 1W / ALL slice that curve from its last timestamp.
-- **Coins** is the scan list: icon, name, symbol, age, decision, reason, search, and filters.
-- A coin opens the price, market stats, gates, contract copy, and a candlestick chart (1m / 5m / 15m / 1h) with volume and the desk’s buys and sells. Drag pans, pinch or wheel zooms, double-tap resets.
+- **Coins** is the scan list: icon, name, symbol, market cap, age, decision, plain reason, search, and filters.
+- A coin opens the price, market cap, gates, contract copy, and a candlestick chart (1m / 5m / 15m / 1h) drawn from that coin’s `candles`. Green and red bodies, wicks, drag to pan, pinch or wheel to zoom, and a crosshair with OHLC. Entry, stop, and target are drawn when that mint is an open position. Buy and Sell sit on a bar above the tabs and open Telegram (`/buy` with 0.02, 0.05, or 0.1 SOL, `/sell` with 25, 50, or 100). The phone never holds a key. The same actions sit on each open position.
 - **Activity** is the fill tape. Daily cap, run state, and bot health stay on Home when the file includes them. Missing numbers are omitted.
 - The floating bar is Home, Coins, Activity, and Account. Account is appearance only.
-- Coin charts draw the entry, a stop ( `stop_usd`, otherwise entry × 0.6 ), a target ( `take_profit_usd`, otherwise 2× entry ), a trailing level when the file has one, and the buy/sell marks.
-- Icons accept `icon`, `image`, `image_url`, `icon_url`, or `logo`. `ipfs://` and `/ipfs/<cid>` URLs are loaded through ipfs.io, dweb.link, cloudflare-ipfs.com, then cf-ipfs.com, then a generated avatar.
+- Coin charts draw the entry, a stop ( `stop_usd`, otherwise entry × 0.6 ), a target ( `take_profit_usd`, otherwise 2× entry ), and a trailing level when the file has one, only while that coin is an open position.
+- Icons prefer `icon_url`. `icon`, `image`, `image_url`, and `logo` still work, including `ipfs://` through ipfs.io, dweb.link, cloudflare-ipfs.com, then cf-ipfs.com. A failed image becomes an initials badge.
 
 ## Fields the exporter should add
 
