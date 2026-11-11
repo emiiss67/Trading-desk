@@ -133,11 +133,11 @@ Links to pump.fun, Solscan, and DexScreener are built from the mint. URLs inside
 
 ## Phone UI
 
-- **Home** is the book: portfolio value and a portfolio line with a coin icon and BUY/SELL label on each fill. Wallet SOL is shown with an EUR value from `wallet.sol_eur`, or from CoinGecko when that field is missing.
+- **Home** is the book: a large portfolio value (no separate P&L figure), small pills for capital in, trade count, multiplier, and today’s percent when those fields exist, and a glowing portfolio line. The line has a dashed “put in” baseline from `equity.start_usd`, an end dot, and coin-icon tags for each fill (`Buy` plus size, or the sell’s `pnl_usd`). Tags step onto extra lanes when they would overlap. Wallet SOL is shown with an EUR value from `wallet.sol_eur`, or from CoinGecko when that field is missing. Open positions, scanner counts from `scanned[]`, recent bought and rejected coins with their reasons, a value sparkline from the equity curve, and a decisions feed from `activity` sit on the same screen. LIVE / 1H / 4H / 1D / 1W / ALL slice that curve from its last timestamp.
 - **Coins** is the scan list: icon, name, symbol, age, decision, reason, search, and filters.
 - A coin opens the price, market stats, gates, contract copy, and a candlestick chart (1m / 5m / 15m / 1h) with volume and the desk’s buys and sells. Drag pans, pinch or wheel zooms, double-tap resets.
-- **Positions** and **Tape** are the open book and the fills.
-- **Book** and **Tape** are the open positions and the fills. Daily cap, run state, and bot health stay on Home when the file includes them. Missing numbers are omitted.
+- **Activity** is the fill tape. Daily cap, run state, and bot health stay on Home when the file includes them. Missing numbers are omitted.
+- The floating bar is Home, Coins, Activity, and Account. Account is appearance only.
 - Coin charts draw the entry, a stop ( `stop_usd`, otherwise entry × 0.6 ), a target ( `take_profit_usd`, otherwise 2× entry ), a trailing level when the file has one, and the buy/sell marks.
 - Icons accept `icon`, `image`, `image_url`, `icon_url`, or `logo`. `ipfs://` and `/ipfs/<cid>` URLs are loaded through ipfs.io, dweb.link, cloudflare-ipfs.com, then cf-ipfs.com, then a generated avatar.
 
@@ -149,13 +149,13 @@ The sample snapshot already has `equity_curve`, `activity`, `wallet.sol`, and `w
 | --- | --- |
 | `wallet.sol_eur` | EUR value of the SOL balance. If absent, the phone asks CoinGecko. |
 | `equity_curve[].t` and `equity_curve[].equity_usd` | Portfolio line. `portfolio_history[].t` + `value_usd` is also read. |
-| `equity.start_usd` | Builds the P&L line as portfolio minus start when `pnl_curve` is absent. |
+| `equity.start_usd` | Dashed “put in” baseline on the portfolio line, and the multiplier pill (`equity.usd / start_usd`). |
 | `pnl_curve[]` with `t` and `pnl_usd` | Optional explicit P&L history. Preferred over the derived line. |
 | `activity[].at`, `side`, `icon` or `image`, `symbol`, `mint` | Trade markers on the portfolio line. |
 | `positions[].trailing_usd` | Trailing line on the coin chart. Also accepted as `trailing_stop_usd`. |
 | `positions[].stop_usd` and `take_profit_usd` | Stop and target. If omitted, the chart uses entry × 0.6 and entry × 2. |
 | `icon` or `image` as `https` or `ipfs://` | Real coin art. Relative paths still resolve against the data base. |
 - Pull down, or use the refresh control. While the page is visible it refetches about every 15 seconds.
-- Appearance (local only): Midnight, OLED black, Neon green, Purple haze, Light; accent color; particle style, density, and on/off; effects; comfy or compact; default timeframe; USD or SOL. Particles pause when the tab is hidden and stay off when the OS asks for reduced motion.
+- Appearance (local only, `desk.settings.v1`): palettes Matrix, Neon, Ocean, Sunset, Gold, Blood, Ice, Mono, and Candy, plus a custom accent; backgrounds solid, gradient, aurora, grid, and noise; particles stars, embers, bubbles, snow, matrix rain, and glow grid, with density and speed, or off; glow, chart glow, count-up, press, card shine, and blur; chart line, area, or candles and stroke thickness; system or mono type; compact mode. Particles pause when the tab is hidden and stay off when the OS asks for reduced motion. A profitable sell can throw a short confetti burst.
 
 Check the fixture with `node --test` (or `npm test`). There is no install step.

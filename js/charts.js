@@ -367,7 +367,34 @@ export function mountCandles(canvas, candles, trades, { formatPrice, formatTime,
   };
 }
 
-export function mountMarkedLine(canvas, points, markers, { formatY, style = "area" } = {}) {
+export function mountSpark(canvas, values) {
+  const nums = values.filter((value) => Number.isFinite(value));
+  const draw = () => {
+    const { ctx, w, h } = fit(canvas);
+    ctx.clearRect(0, 0, w, h);
+    if (nums.length < 2 || w < 8 || h < 8) return;
+    const min = Math.min(...nums);
+    const max = Math.max(...nums);
+    const span = max - min || 1;
+    const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#3dff8a";
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    nums.forEach((value, i) => {
+      const x = (i / (nums.length - 1)) * (w - 2) + 1;
+      const y = h - 3 - ((value - min) / span) * (h - 6);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  };
+  const observer = new ResizeObserver(draw);
+  observer.observe(canvas);
+  draw();
+  return { destroy() { observer.disconnect(); } };
+}
+
+export function mountMarkedLine(canvas, points, markers, { formatY, style = "area", baseline = null } = {}) {
   const images = new Map();
   let frame = 0;
   let alive = true;
@@ -379,7 +406,7 @@ export function mountMarkedLine(canvas, points, markers, { formatY, style = "are
     ctx.clearRect(0, 0, w, h);
     if (w < 20 || h < 20 || !points.length) return;
     const col = palette();
-    const pad = { l: 8, r: 54, t: 28, b: 16 };
+    const pad = { l: 10, r: 12, t: 36, b: 18 };
     const values = points.map((point) => point.v).filter(Number.isFinite);
     if (!values.length) return;
     let min = Math.min(...values);
@@ -410,19 +437,8 @@ export function mountMarkedLine(canvas, points, markers, { formatY, style = "are
       });
       return xOf(best);
     };
-    ctx.strokeStyle = col.line;
-    ctx.lineWidth = 1;
     ctx.font = "11px ui-monospace, SFMono-Regular, Menlo, monospace";
     ctx.fillStyle = col.muted;
-    for (const frac of [0, 1]) {
-      const value = max - (max - min) * frac;
-      const y = yOf(value);
-      ctx.beginPath();
-      ctx.moveTo(pad.l, y);
-      ctx.lineTo(w - pad.r, y);
-      ctx.stroke();
-      ctx.fillText(formatY(value), w - pad.r + 6, y + 4);
-    }
     ctx.beginPath();
     points.forEach((point, i) => {
       const x = xOf(i);
@@ -472,12 +488,46 @@ export function mountMarkedLine(canvas, points, markers, { formatY, style = "are
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       });
+      const rootStyle = getComputedStyle(document.documentElement);
+      const width = Number(rootStyle.getPropertyValue("--chart-width")) || 2;
+      const glow = Number(rootStyle.getPropertyValue("--chart-glow")) || 0;
       ctx.strokeStyle = col.accent;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = width;
+      ctx.shadowColor = col.accent;
+      ctx.shadowBlur = glow;
       ctx.stroke();
       ctx.restore();
     }
-    const pulse = reduce ? 1 : 1 + Math.sin(performance.now() / 280) * 0.16;
+    if (reveal >= 1) {
+      const last = points[points.length - 1];
+      ctx.save();
+      ctx.fillStyle = col.accent;
+      ctx.shadowColor = col.accent;
+      ctx.shadowBlur = Number(getComputedStyle(document.documentElement).getPropertyValue("--chart-glow")) || 8;
+      ctx.beginPath();
+      ctx.arc(xOf(points.length - 1), yOf(last.v), 3.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    if (Number.isFinite(baseline)) {
+      const inside = baseline >= min && baseline <= max;
+      const y = inside ? yOf(baseline) : pad.t + plotH - 2;
+      ctx.save();
+      ctx.setLineDash([3, 4]);
+      ctx.strokeStyle = col.muted;
+      ctx.beginPath();
+      ctx.moveTo(pad.l, y);
+      ctx.lineTo(w - pad.r, y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = col.muted;
+      ctx.font = "10px ui-monospace, SFMono-Regular, Menlo, monospace";
+      ctx.textAlign = "left";
+      ctx.fillText(inside ? "put in" : `put in ${formatY(baseline)}`, pad.l, Math.max(12, y - 5));
+      ctx.restore();
+    }
+    const pulse = reduce ? 1 : 1 + Math.sin(performance.now() / 320) * 0.12;
+    const spots = [];
     for (const marker of markers) {
       const x = xOfTime(marker.t);
       if (x == null) continue;
@@ -487,21 +537,46 @@ export function mountMarkedLine(canvas, points, markers, { formatY, style = "are
       const y = yOf(nearest.v);
       ctx.fillStyle = marker.side === "sell" ? col.bad : col.accent;
       ctx.beginPath();
-      ctx.arc(x, y, 8 * pulse, 0, Math.PI * 2);
+      ctx.arc(x, y, 6.5 * pulse, 0, Math.PI * 2);
       ctx.fill();
       const img = marker.src ? images.get(marker.src) : null;
       if (img && img.complete && img.naturalWidth) {
         ctx.save();
         ctx.beginPath();
-        ctx.arc(x, y, 6.5, 0, Math.PI * 2);
+        ctx.arc(x, y, 5, 0, Math.PI * 2);
         ctx.clip();
-        ctx.drawImage(img, x - 6.5, y - 6.5, 13, 13);
+        ctx.drawImage(img, x - 5, y - 5, 10, 10);
         ctx.restore();
       }
-      ctx.fillStyle = col.ink;
-      ctx.font = "9px ui-monospace, SFMono-Regular, Menlo, monospace";
-      ctx.textAlign = "center";
-      ctx.fillText(marker.side === "sell" ? "SELL" : "BUY", x, y - 14);
+      spots.push({ x, y, marker });
+    }
+    ctx.font = "10px ui-monospace, SFMono-Regular, Menlo, monospace";
+    const groups = [];
+    for (const spot of [...spots].sort((a, b) => a.x - b.x)) {
+      const group = groups.find((items) => Math.abs(items[items.length - 1].x - spot.x) < 96);
+      if (group) group.push(spot);
+      else groups.push([spot]);
+    }
+    for (const group of groups) {
+      const widest = Math.max(...group.map((spot) => ctx.measureText(spot.marker.label || "BUY").width + 10));
+      const anchor = Math.min(...group.map((spot) => spot.x));
+      const left = Math.max(4, Math.min(anchor - widest - 8, w - widest - 4));
+      const lineY = Math.min(...group.map((spot) => spot.y));
+      const start = Math.max(14, lineY - 20 - (group.length - 1) * 16);
+      group.forEach((spot, index) => {
+        const label = spot.marker.label || (spot.marker.side === "sell" ? "SELL" : "BUY");
+        const tw = ctx.measureText(label).width + 10;
+        const baseline = Math.min(h - 8, start + index * 16);
+        const tagTop = baseline - 11;
+        ctx.fillStyle = "rgba(0,0,0,0.78)";
+        ctx.beginPath();
+        if (typeof ctx.roundRect === "function") ctx.roundRect(left, tagTop, tw, 14, 7);
+        else ctx.rect(left, tagTop, tw, 14);
+        ctx.fill();
+        ctx.fillStyle = spot.marker.side === "sell" ? col.bad : col.accent;
+        ctx.textAlign = "left";
+        ctx.fillText(label, left + 5, baseline);
+      });
     }
     if (!reduce && reveal < 1) frame = requestAnimationFrame(draw);
     else if (!reduce && markers.length) frame = requestAnimationFrame(draw);
