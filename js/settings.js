@@ -1,15 +1,34 @@
 export const THEMES = [
-  { id: "system", name: "System", swatch: "#8e8e93", ink: "#fff", accent: "#0A84FF" },
-  { id: "light", name: "Light", swatch: "#f2f2f7", ink: "#000", accent: "#007AFF" },
-  { id: "dark", name: "Dark", swatch: "#000000", ink: "#fff", accent: "#0A84FF" },
+  { id: "matrix", name: "Matrix", swatch: "#07140c", ink: "#d7ffe4", accent: "#3dff8a" },
+  { id: "neon", name: "Neon", swatch: "#140818", ink: "#f3e9ff", accent: "#c084fc" },
+  { id: "ocean", name: "Ocean", swatch: "#071018", ink: "#e7f6ff", accent: "#38bdf8" },
+  { id: "sunset", name: "Sunset", swatch: "#1a0d08", ink: "#ffe8d6", accent: "#fb923c" },
+  { id: "gold", name: "Gold", swatch: "#161208", ink: "#fff4d2", accent: "#f5c451" },
+  { id: "blood", name: "Blood", swatch: "#160808", ink: "#ffe4e4", accent: "#f43f5e" },
+  { id: "ice", name: "Ice", swatch: "#0c1218", ink: "#eef6ff", accent: "#7dd3fc" },
+  { id: "mono", name: "Mono", swatch: "#101010", ink: "#f4f4f5", accent: "#e4e4e7" },
+  { id: "candy", name: "Candy", swatch: "#180814", ink: "#ffe4f3", accent: "#f472b6" },
 ];
 
-export const ACCENTS = ["#0A84FF", "#30D158", "#FF9F0A", "#BF5AF2", "#FF375F"];
+export const ACCENTS = ["#3dff8a", "#c084fc", "#38bdf8", "#fb923c", "#f5c451", "#f43f5e", "#7dd3fc", "#f472b6"];
+export const BACKGROUNDS = [
+  { id: "solid", name: "Solid" },
+  { id: "gradient", name: "Gradient" },
+  { id: "aurora", name: "Aurora" },
+  { id: "grid", name: "Grid" },
+  { id: "noise", name: "Noise" },
+];
+export const FONT_FACES = [
+  { id: "system", name: "System" },
+  { id: "mono", name: "Mono" },
+];
 export const PARTICLE_STYLES = [
   { id: "stars", name: "Stars" },
   { id: "embers", name: "Embers" },
   { id: "bubbles", name: "Bubbles" },
-  { id: "grid", name: "Grid glow" },
+  { id: "snow", name: "Snow" },
+  { id: "matrix", name: "Matrix rain" },
+  { id: "grid", name: "Glow grid" },
 ];
 export const TIMEFRAMES = ["1m", "5m", "15m", "1h"];
 export const CHART_STYLES = [
@@ -26,17 +45,27 @@ export const FONT_SIZES = [
 const KEY = "desk.settings.v1";
 
 export const DEFAULTS = {
-  theme: "system",
+  theme: "matrix",
   accent: null,
+  background: "solid",
   particles: false,
   particleStyle: "stars",
   particleDensity: 22,
+  particleSpeed: 50,
   effects: true,
+  glow: 36,
+  chartGlow: true,
+  countUp: true,
+  haptic: true,
+  shine: false,
+  blur: true,
   density: "comfy",
   timeframe: "5m",
   currency: "USD",
   chartStyle: "area",
+  chartWidth: 2,
   fontSize: "md",
+  fontFace: "system",
 };
 
 export function normalizeHex(value) {
@@ -70,16 +99,32 @@ export function sanitizeSettings(raw) {
   if (!raw || typeof raw !== "object") return next;
   if (THEMES.some((theme) => theme.id === raw.theme)) next.theme = raw.theme;
   next.accent = normalizeHex(raw.accent);
+  if (BACKGROUNDS.some((item) => item.id === raw.background)) next.background = raw.background;
   next.particles = raw.particles === true;
   if (PARTICLE_STYLES.some((style) => style.id === raw.particleStyle)) next.particleStyle = raw.particleStyle;
   next.particleDensity = densityNumber(raw.particleDensity);
+  next.particleSpeed = clampNumber(raw.particleSpeed, 0, 100, DEFAULTS.particleSpeed);
   next.effects = raw.effects !== false;
+  next.glow = clampNumber(raw.glow, 0, 100, DEFAULTS.glow);
+  next.chartGlow = raw.chartGlow !== false;
+  next.countUp = raw.countUp !== false;
+  next.haptic = raw.haptic !== false;
+  next.shine = raw.shine === true;
+  next.blur = raw.blur !== false;
   next.density = raw.density === "compact" ? "compact" : "comfy";
   if (TIMEFRAMES.includes(raw.timeframe)) next.timeframe = raw.timeframe;
   next.currency = raw.currency === "SOL" ? "SOL" : "USD";
   if (raw.chartStyle === "line" || raw.chartStyle === "candles" || raw.chartStyle === "area") next.chartStyle = raw.chartStyle;
+  next.chartWidth = clampNumber(raw.chartWidth, 1, 4, DEFAULTS.chartWidth);
   if (raw.fontSize === "sm" || raw.fontSize === "lg" || raw.fontSize === "md") next.fontSize = raw.fontSize;
+  if (FONT_FACES.some((item) => item.id === raw.fontFace)) next.fontFace = raw.fontFace;
   return next;
+}
+
+function clampNumber(value, min, max, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(min, Math.min(max, Math.round(n)));
 }
 
 export function densityNumber(value) {
@@ -112,9 +157,17 @@ export function saveSettings(settings) {
 export function applySettings(settings) {
   const root = document.documentElement;
   root.dataset.theme = settings.theme;
+  root.dataset.bg = settings.background || "solid";
   root.dataset.density = settings.density;
   root.dataset.effects = settings.effects ? "on" : "off";
   root.dataset.font = settings.fontSize || "md";
+  root.dataset.face = settings.fontFace || "system";
+  root.dataset.blur = settings.blur === false ? "off" : "on";
+  root.dataset.shine = settings.shine ? "on" : "off";
+  root.dataset.haptic = settings.haptic === false ? "off" : "on";
+  root.style.setProperty("--glow", `${Math.round(((settings.glow ?? 36) / 100) * 28)}px`);
+  root.style.setProperty("--chart-width", String(settings.chartWidth || 2));
+  root.style.setProperty("--chart-glow", settings.chartGlow === false ? "0" : String(6 + Math.round((settings.glow ?? 36) / 8)));
   const accent = normalizeHex(settings.accent);
   if (accent) {
     root.style.setProperty("--accent", accent);
@@ -135,12 +188,6 @@ export function applySettings(settings) {
   );
 }
 
-export function isLightTheme(settings) {
-  if (settings?.theme === "light") return true;
-  if (settings?.theme === "dark") return false;
-  try {
-    return !window.matchMedia("(prefers-color-scheme: dark)").matches;
-  } catch {
-    return false;
-  }
+export function isLightTheme() {
+  return false;
 }

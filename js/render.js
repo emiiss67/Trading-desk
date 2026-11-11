@@ -3,6 +3,7 @@ import { isMint, isSig, num, oneOf, str } from "./text.js";
 import {
   formatAge,
   formatCompactUsd,
+  formatUsd,
   formatPair,
   formatPct,
   formatPrice,
@@ -13,8 +14,8 @@ import {
   formatEur,
 } from "./format.js";
 import { coinIcon, icon } from "./icons.js";
-import { ACCENTS, CHART_STYLES, PARTICLE_STYLES, THEMES, TIMEFRAMES } from "./settings.js";
-import { mountCandles, mountMarkedLine } from "./charts.js";
+import { ACCENTS, BACKGROUNDS, CHART_STYLES, FONT_FACES, PARTICLE_STYLES, THEMES, TIMEFRAMES } from "./settings.js";
+import { mountCandles, mountMarkedLine, mountSpark } from "./charts.js";
 import { curvePoints, entryPrice, iconField, iconSources, portfolioUsd, tradeLevels } from "./fields.js";
 import { safeImageUrl } from "./api.js";
 import { candlesFromCoin, normalizeTrades } from "./series.js";
@@ -24,10 +25,10 @@ import { hostOf } from "./link.js";
 const TABS = [
   ["home", "Home", "Portfolio"],
   ["scan", "Coins", "Scanned coins"],
-  ["positions", "Book", "Open positions"],
-  ["tape", "Tape", "Fills"],
+  ["tape", "Activity", "Fills"],
+  ["look", "Account", "Customize"],
 ];
-const TITLES = { home: "Book", scan: "Coins", positions: "Open", tape: "Tape", desk: "Book" };
+const TITLES = { home: "Home", scan: "Coins", positions: "Open", tape: "Activity", desk: "Home", look: "Customize" };
 const charts = [];
 
 function destroyCharts() {
@@ -72,7 +73,7 @@ function decisionLabel(decision) {
 function runLabel(run) {
   if (run === "halted") return "Halted";
   if (run === "paused") return "Paused";
-  return "Running";
+  return "Live";
 }
 
 function sortedScanned(snapshot) {
@@ -114,9 +115,9 @@ function shell(actions) {
 function paintHeader(state, actions) {
   const top = document.getElementById("top");
   const snap = state.snapshot;
-  const run = oneOf(snap?.desk?.run_state, ["live", "paused", "halted"]) || (snap ? "live" : "");
+  const run = oneOf(snap?.desk?.run_state, ["live", "paused", "halted"]);
   const mode = oneOf(snap?.desk?.mode, ["live", "paper"]);
-  const title = headerTitle(state);
+  const name = str(snap?.desk?.title, 48) || "Desk";
   top.classList.toggle("is-overlay", Boolean(state.overlay));
   const parts = [];
   if (state.overlay) {
@@ -126,32 +127,14 @@ function paintHeader(state, actions) {
     ]));
   }
   parts.push(
-    el("div", { class: "top-id" }, [
-      el("p", { class: "kicker", text: "Desk" }),
-      el("h1", { class: "title", text: title }),
-      snap ? el("p", { class: "desk-name", text: str(snap.desk?.title, 80) || "Private desk" }) : el("p", { class: "desk-name", text: state.loading ? "Loading the file" : "Waiting" }),
+    el("div", { class: "brand" }, [
+      el("span", { class: "brand-mark", text: name.slice(0, 1).toUpperCase() }),
+      el("strong", { text: name }),
+      mode ? el("span", { class: "pill", text: mode === "live" ? "LIVE" : "PAPER" }) : null,
     ]),
     el("div", { class: "top-side" }, [
-      snap
-        ? el("p", { class: `run run-${run || "live"}` }, [
-          el("i", { class: state.syncing ? "dot sync" : "dot", "aria-hidden": "true" }),
-          el("span", { text: runLabel(run) }),
-          el("span", { class: "mode", text: mode === "live" ? "Live account" : "Paper" }),
-        ])
-        : el("p", { class: "run", text: state.syncing ? "Syncing" : "" }),
-      el("button", {
-        type: "button",
-        class: "icon-btn haptic",
-        "aria-label": "Refresh",
-        onclick: () => actions.refresh(),
-      }, [icon("refresh")]),
-      el("button", {
-        type: "button",
-        class: "icon-btn haptic",
-        "aria-label": "Appearance",
-        "aria-pressed": state.overlay?.type === "look" ? "true" : "false",
-        onclick: () => actions.openLook(),
-      }, [icon("look")]),
+      run ? el("span", { class: `live-pill run-${run}`, text: runLabel(run) }) : null,
+      el("button", { type: "button", class: "icon-btn haptic", "aria-label": "Refresh", onclick: () => actions.refresh() }, [icon("refresh")]),
     ]),
   );
   top.replaceChildren(...parts);
@@ -164,10 +147,10 @@ function paintDock(state, actions) {
       type: "button",
       class: "haptic",
       "aria-label": name,
-      "aria-current": !state.overlay && state.tab === id ? "page" : "false",
-      onclick: () => actions.setTab(id),
+      "aria-current": (id === "look" ? state.overlay?.type === "look" : !state.overlay && state.tab === id) ? "page" : "false",
+      onclick: () => (id === "look" ? actions.openLook() : actions.setTab(id)),
     }, [
-      icon(id === "home" ? "home" : id === "scan" ? "coins" : id === "positions" ? "book" : "tape"),
+      icon(id === "home" ? "home" : id === "scan" ? "coins" : id === "look" ? "look" : "tape"),
       el("span", { text: label }),
     ])),
   );
@@ -304,11 +287,11 @@ function positionCard(state, row, actions) {
         el("span", { class: "coin-name", text: str(row.name, 48) || "Unnamed" }),
         el("span", { class: "coin-meta", text: [str(row.symbol, 12), num(row.qty_tokens) == null ? "" : `${formatQty(num(row.qty_tokens))} tokens`].filter(Boolean).join(" · ") }),
       ]),
-      pnl == null ? null : el("span", { class: pnl < 0 ? "pnl down" : "pnl up" }, [
-        el("b", { text: pair.primary }),
-        pair.secondary && pair.secondary !== "—" ? el("small", { text: pair.secondary }) : null,
-        num(row.pnl_pct) == null ? null : el("small", { text: formatPct(num(row.pnl_pct)) }),
-      ]),
+      pnl == null ? null : el("span", { class: pnl < 0 ? "pnl down" : "pnl up", text: [
+        pair.primary,
+        pair.secondary && pair.secondary !== "—" ? pair.secondary : "",
+        num(row.pnl_pct) == null ? "" : formatPct(num(row.pnl_pct)),
+      ].filter(Boolean).join(" · ") }),
     ]),
     el("dl", { class: "levels" }, [
       level("Entry", priceText(state, num(row.entry_usd))),
@@ -387,39 +370,197 @@ function homeView(state, actions, rise) {
     v: currency === "SOL" && usdRate ? point.v / usdRate : point.v,
   }));
   const markers = tradeMarkers(state);
-  const bookCanvas = points.length ? el("canvas", { class: "equity book-line", "aria-label": "Portfolio value" }) : null;
+  const ranged = filterCurve(points, state.range || "1D");
+  const bookCanvas = ranged.length ? el("canvas", { class: "equity book-line", "aria-label": "Portfolio value" }) : null;
+  const start = num(snap?.equity?.start_usd);
+  const baseline = start == null ? null : (currency === "SOL" && usdRate ? start / usdRate : start);
+  const trades = Array.isArray(snap?.activity) ? snap.activity.length : 0;
+  const multiple = book != null && start ? book / start : null;
+  const todayPct = num(snap?.today?.pnl_pct);
   const walletBits = [];
-  if (sol != null) walletBits.push(el("span", {}, [`${formatSolAmount(sol)} SOL`]));
-  if (sol != null && eurRate) walletBits.push(el("span", {}, [formatEur(sol * eurRate)]));
+  if (sol != null) walletBits.push(`${formatSolAmount(sol)} SOL`);
+  if (sol != null && eurRate) walletBits.push(formatEur(sol * eurRate));
+  const figure = equity ? splitFigure(equity.primary) : null;
   const node = el("section", { class: `home ${rise ? "rise" : ""}` }, [
     sampleRibbon(snap),
-    equity ? el("p", { class: "hero-book", "data-hero": "book" }, [
-      el("span", { text: equity.primary }),
-      el("small", { text: "Portfolio" }),
+    ticker(state, actions),
+    figure ? el("p", { class: "hero-book", "data-hero": "book" }, [
+      el("span", { class: "whole", text: figure.whole }),
+      figure.frac ? el("span", { class: "frac", text: figure.frac }) : null,
     ]) : null,
-    walletBits.length ? el("p", { class: "wallet-line" }, walletBits) : null,
+    el("div", { class: "pills" }, [
+      start != null ? el("span", { class: "pill", text: `in ${formatCompactUsd(start)}` }) : null,
+      trades ? el("span", { class: "pill", text: `${trades} trades` }) : null,
+      multiple != null ? el("span", { class: "pill good", text: `${multiple.toFixed(2)}×` }) : null,
+      todayPct != null ? el("span", { class: `pill ${todayPct < 0 ? "bad" : "good"}`, text: `${formatPct(todayPct)} today` }) : null,
+      ...walletBits.map((bit) => el("span", { class: "pill", text: bit })),
+    ]),
     bookCanvas ? el("div", { class: "chart-block" }, [
-      el("div", { class: "chart-head" }, [el("h2", { text: "Portfolio" })]),
       bookCanvas,
+      el("div", { class: "ranges" }, ["LIVE", "1H", "4H", "1D", "1W", "ALL"].map((id) => el("button", {
+        type: "button",
+        class: "chip haptic",
+        "aria-pressed": (state.range || "1D") === id ? "true" : "false",
+        onclick: () => actions.setRange(id),
+      }, [id]))),
     ]) : null,
+    positionsCard(state, actions),
+    scannerCard(snap),
+    recentCard(state, actions),
+    decisionsCard(state, actions),
+    metricTiles(snap, ranged, currency),
     capBlock(state),
     statusBits(snap) ? el("p", { class: "quiet", text: statusBits(snap) }) : null,
-    snap?.generated_at ? el("p", { class: "marked", text: `Marked ${formatVilnius(snap.generated_at)}` }) : null,
-    state.stale ? el("p", { class: "quiet", text: "Showing the last file. The refresh did not land." }) : null,
+    snap?.generated_at ? el("p", { class: "marked", text: formatVilnius(snap.generated_at) }) : null,
     healthBlock(snap),
   ]);
   queueMicrotask(() => {
     const formatY = (value) => (currency === "SOL" ? formatSolAmount(value) : formatCompactUsd(value));
     const chartStyle = state.settings.chartStyle === "line" || state.settings.chartStyle === "candles" ? state.settings.chartStyle : "area";
-    if (bookCanvas?.isConnected) track(mountMarkedLine(bookCanvas, points, markers, { formatY, style: chartStyle }));
-    if (anim && effectsAllowed(state.settings)) {
-      const bk = node.querySelector('[data-hero="book"] span');
-      if (bk && anim.from.equityUsd != null && anim.to.equityUsd != null) {
-        countUp(bk, anim.from.equityUsd, anim.to.equityUsd, (value) => formatPair(value, usdRate, currency).primary);
+    if (bookCanvas?.isConnected) track(mountMarkedLine(bookCanvas, ranged, markers, { formatY, style: chartStyle, baseline }));
+    if (anim && state.settings.countUp !== false && effectsAllowed(state.settings)) {
+      const whole = node.querySelector("[data-hero='book'] .whole");
+      const frac = node.querySelector("[data-hero='book'] .frac");
+      if (whole && anim.from.equityUsd != null && anim.to.equityUsd != null) {
+        countUp(whole, anim.from.equityUsd, anim.to.equityUsd, (value) => {
+          const parts = splitFigure(formatPair(value, usdRate, currency).primary);
+          if (frac) frac.textContent = parts.frac;
+          return parts.whole;
+        });
       }
     }
   });
   return node;
+}
+
+function splitFigure(text) {
+  const match = String(text).match(/^(.*?)(\.\d+)?$/);
+  return { whole: match?.[1] || text, frac: match?.[2] || "" };
+}
+
+function filterCurve(points, range) {
+  if (!points.length || range === "ALL") return points;
+  const end = Date.parse(points[points.length - 1].t);
+  const windowMs = { LIVE: 45 * 60 * 1000, "1H": 3600000, "4H": 4 * 3600000, "1D": 86400000, "1W": 7 * 86400000 }[range];
+  if (!windowMs || !Number.isFinite(end)) return points;
+  const cut = points.filter((point) => Date.parse(point.t) >= end - windowMs);
+  return cut.length >= 2 ? cut : points;
+}
+
+function ticker(state, actions) {
+  const rows = sortedScanned(state.snapshot).slice(0, 12);
+  if (!rows.length) return null;
+  return el("div", { class: "ticker" }, rows.map((row) => {
+    const pos = (state.snapshot?.positions || []).find((item) => item?.mint === row.mint);
+    const pct = num(pos?.pnl_pct);
+    return el("button", {
+      type: "button",
+      class: "tick haptic",
+      onclick: () => isMint(row.mint) && actions.openCoin(row.mint),
+    }, [
+      coinIcon(iconField(row), row.symbol, row.name, state.link.base),
+      el("b", { text: `$${str(row.symbol, 8)}` }),
+      pct == null ? null : el("em", { class: pct < 0 ? "down" : "up", text: formatPct(pct) }),
+    ]);
+  }));
+}
+
+function positionsCard(state, actions) {
+  const rows = Array.isArray(state.snapshot?.positions) ? state.snapshot.positions : [];
+  return el("section", { class: "panel" }, [
+    el("h2", { text: "Open positions" }),
+    rows.length ? el("div", {}, rows.map((row) => positionCard(state, row, actions))) : el("p", { class: "quiet", text: "No open positions" }),
+  ]);
+}
+
+function scannerCard(snap) {
+  const rows = sortedScanned(snap);
+  if (!rows.length) return null;
+  const rejected = rows.filter((row) => oneOf(row.decision, ["bought", "rejected", "watching"]) === "rejected");
+  const passed = rows.filter((row) => oneOf(row.decision, ["bought", "rejected", "watching"]) === "bought");
+  return el("section", { class: "panel" }, [
+    el("h2", { text: "Scanner" }),
+    el("div", { class: "metrics" }, [
+      el("div", {}, [el("b", { text: String(rows.length) }), el("span", { text: "watched" })]),
+      el("div", {}, [el("b", { text: String(passed.length) }), el("span", { text: "passed" })]),
+      el("div", {}, [el("b", { text: String(rejected.length) }), el("span", { text: "rejected" })]),
+    ]),
+    ...rejected.slice(0, 4).map((row) => str(row.reason, 80) ? el("p", { class: "reason", text: `${str(row.symbol, 8)} · ${str(row.reason, 80)}` }) : null),
+  ]);
+}
+
+function recentCard(state, actions) {
+  const rows = sortedScanned(state.snapshot).filter((row) => {
+    const decision = oneOf(row.decision, ["bought", "rejected", "watching"]);
+    return decision === "bought" || decision === "rejected";
+  }).slice(0, 6);
+  if (!rows.length) return null;
+  return el("section", { class: "panel" }, [
+    el("h2", { text: "Recent" }),
+    ...rows.map((row) => el("button", {
+      type: "button",
+      class: "recent haptic",
+      onclick: () => isMint(row.mint) && actions.openCoin(row.mint),
+    }, [
+      coinIcon(iconField(row), row.symbol, row.name, state.link.base),
+      el("span", {}, [
+        el("b", { text: `$${str(row.symbol, 8)}` }),
+        str(row.reason, 80) ? el("small", { text: str(row.reason, 80) }) : null,
+      ]),
+      el("em", { class: oneOf(row.decision, ["bought", "rejected"]) === "bought" ? "up" : "down", text: decisionLabel(oneOf(row.decision, ["bought", "rejected", "watching"])) }),
+    ])),
+  ]);
+}
+
+function decisionsCard(state, actions) {
+  const rows = (Array.isArray(state.snapshot?.activity) ? state.snapshot.activity : [])
+    .filter((row) => row && oneOf(row.side, ["buy", "sell"]) && row.at)
+    .slice()
+    .sort((a, b) => (Date.parse(b.at) || 0) - (Date.parse(a.at) || 0))
+    .slice(0, 8);
+  if (!rows.length) return null;
+  return el("section", { class: "panel" }, [
+    el("h2", { text: "Decisions" }),
+    ...rows.map((row) => {
+      const side = oneOf(row.side, ["buy", "sell"]);
+      const pnl = num(row.pnl_usd);
+      return el("button", {
+        type: "button",
+        class: "decision haptic",
+        onclick: () => isMint(row.mint) && actions.openCoin(row.mint),
+      }, [
+        el("time", { text: formatVilniusClock(Math.floor(Date.parse(row.at) / 1000)) }),
+        el("em", { class: side === "sell" ? "down" : "up", text: side === "sell" ? "SELL" : "BUY" }),
+        coinIcon(iconField(row), row.symbol, row.name, state.link.base),
+        el("b", { text: `$${str(row.symbol, 8)}` }),
+        pnl == null ? null : el("span", { class: pnl < 0 ? "down" : "up", text: formatCompactUsd(pnl) }),
+      ]);
+    }),
+  ]);
+}
+
+function metricTiles(snap, points, currency) {
+  const tiles = [];
+  if (points.length >= 2) {
+    const canvas = el("canvas", { class: "spark", "aria-hidden": "true" });
+    const last = points[points.length - 1].v;
+    tiles.push(el("div", { class: "tile" }, [
+      el("span", { text: "Value" }),
+      el("b", { text: currency === "SOL" ? `${formatSolAmount(last)} SOL` : formatCompactUsd(last) }),
+      canvas,
+    ]));
+    queueMicrotask(() => {
+      if (canvas.isConnected) track(mountSpark(canvas, points.map((point) => point.v)));
+    });
+  }
+  const free = num(snap?.equity?.free_cash_usd);
+  if (free != null) {
+    tiles.push(el("div", { class: "tile" }, [
+      el("span", { text: "Free cash" }),
+      el("b", { text: formatCompactUsd(free) }),
+    ]));
+  }
+  return tiles.length ? el("div", { class: "tiles" }, tiles) : null;
 }
 
 function tradeMarkers(state) {
@@ -428,7 +569,13 @@ function tradeMarkers(state) {
     const side = oneOf(row?.side, ["buy", "sell"]);
     if (!side || !row?.at) return null;
     const sources = iconSources(iconField(row), state.link?.base || "", safeImageUrl);
-    return { t: row.at, side, src: sources[0] || "" };
+    const usd = num(row.usd);
+    const pnl = num(row.pnl_usd);
+    const money = (value, sign) => (Math.abs(value) >= 1000 ? formatCompactUsd(value) : formatUsd(value, { sign }));
+    const label = side === "buy"
+      ? (usd == null ? "Buy" : `Buy ${money(usd, false)}`)
+      : (pnl == null ? "Sell" : money(pnl, true));
+    return { t: row.at, side, src: sources[0] || "", label };
   }).filter(Boolean);
 }
 
@@ -730,7 +877,7 @@ function lookView(state, actions, rise) {
   const tail = state.link?.key ? state.link.key.slice(-4) : "";
   return el("section", { class: `look ${rise ? "rise" : ""}` }, [
     el("p", { class: "lede", text: "Appearance stays on this phone. It never changes the bot, the mode, or the risk limits." }),
-    group("Theme", el("div", { class: "plates" }, THEMES.map((theme) => {
+    group("Palette", el("div", { class: "plates" }, THEMES.map((theme) => {
       const button = el("button", {
         type: "button",
         class: "plate haptic",
@@ -765,28 +912,42 @@ function lookView(state, actions, rise) {
         return button;
       }),
       (() => {
-        const input = el("input", { class: "color", type: "color", "aria-label": "Custom accent", value: settings.accent || "#0A84FF" });
+        const input = el("input", { class: "color", type: "color", "aria-label": "Custom accent", value: settings.accent || "#3dff8a" });
         input.addEventListener("input", () => actions.updateSettings({ accent: input.value }));
         return input;
       })(),
     ])),
+    group("Background", seg(BACKGROUNDS.map((item) => [item.id, item.name]), settings.background, (id) => actions.updateSettings({ background: id }))),
     group("Particles", el("div", { class: "stack-tight" }, [
       reduced() ? el("p", { class: "quiet", text: "This phone asked for reduced motion, so particles stay paused." }) : null,
       toggle("Particles", settings.particles, (on) => actions.updateSettings({ particles: on })),
       seg(PARTICLE_STYLES.map((style) => [style.id, style.name]), settings.particleStyle, (id) => actions.updateSettings({ particleStyle: id })),
-      densitySlider(settings, actions),
+      slider("Density", settings.particleDensity, 0, 100, 1, (value) => actions.updateSettings({ particleDensity: value })),
+      slider("Speed", settings.particleSpeed, 0, 100, 1, (value) => actions.updateSettings({ particleSpeed: value })),
     ])),
-    group("Motion", el("div", { class: "stack-tight" }, [
+    group("Effects", el("div", { class: "stack-tight" }, [
       toggle("Effects", settings.effects, (on) => actions.updateSettings({ effects: on })),
+      toggle("Chart glow", settings.chartGlow !== false, (on) => actions.updateSettings({ chartGlow: on })),
+      toggle("Count up", settings.countUp !== false, (on) => actions.updateSettings({ countUp: on })),
+      toggle("Press", settings.haptic !== false, (on) => actions.updateSettings({ haptic: on })),
+      toggle("Card shine", settings.shine === true, (on) => actions.updateSettings({ shine: on })),
+      toggle("Blur", settings.blur !== false, (on) => actions.updateSettings({ blur: on })),
+      slider("Glow", settings.glow, 0, 100, 1, (value) => actions.updateSettings({ glow: value })),
       el("div", { class: "preview", id: "preview-flash" }, [
         el("b", { id: "preview-figure", text: "$792" }),
         el("button", { type: "button", class: "text-btn haptic", onclick: () => actions.preview(), text: "Preview" }),
       ]),
     ])),
+    group("Chart", el("div", { class: "stack-tight" }, [
+      seg(CHART_STYLES.map((item) => [item.id, item.name]), settings.chartStyle, (id) => actions.updateSettings({ chartStyle: id })),
+      slider("Thickness", settings.chartWidth, 1, 4, 1, (value) => actions.updateSettings({ chartWidth: value })),
+      seg(TIMEFRAMES.map((id) => [id, id]), settings.timeframe, (id) => actions.updateSettings({ timeframe: id })),
+    ])),
+    group("Type", el("div", { class: "stack-tight" }, [
+      seg(FONT_FACES.map((item) => [item.id, item.name]), settings.fontFace, (id) => actions.updateSettings({ fontFace: id })),
+      seg([["sm", "Small"], ["md", "Medium"], ["lg", "Large"]], settings.fontSize || "md", (id) => actions.updateSettings({ fontSize: id })),
+    ])),
     group("Layout", seg([["comfy", "Comfy"], ["compact", "Compact"]], settings.density, (id) => actions.updateSettings({ density: id }))),
-    group("Type size", seg([["sm", "Small"], ["md", "Medium"], ["lg", "Large"]], settings.fontSize || "md", (id) => actions.updateSettings({ fontSize: id }))),
-    group("Default chart", seg(TIMEFRAMES.map((id) => [id, id]), settings.timeframe, (id) => actions.updateSettings({ timeframe: id }))),
-    group("Chart style", seg(CHART_STYLES.map((item) => [item.id, item.name]), settings.chartStyle, (id) => actions.updateSettings({ chartStyle: id }))),
     group("Numbers", seg([["USD", "USD"], ["SOL", "SOL"]], settings.currency, (id) => actions.updateSettings({ currency: id }))),
     group("This device", el("div", {}, [
       el("p", { class: "quiet", text: host ? `Saved link · ${host}` : "No link saved." }),
@@ -808,19 +969,20 @@ function lookView(state, actions, rise) {
   ]);
 }
 
-function densitySlider(settings, actions) {
-  const value = Number.isFinite(Number(settings.particleDensity)) ? Number(settings.particleDensity) : 48;
+function slider(label, value, min, max, step, onInput) {
+  const current = Number.isFinite(Number(value)) ? Number(value) : min;
   const input = el("input", {
     class: "density",
     type: "range",
-    min: "0",
-    max: "100",
-    value: String(value),
-    "aria-label": "Particle density",
+    min: String(min),
+    max: String(max),
+    step: String(step),
+    value: String(current),
+    "aria-label": label,
   });
-  input.addEventListener("input", () => actions.updateSettings({ particleDensity: Number(input.value) }));
+  input.addEventListener("input", () => onInput(Number(input.value)));
   return el("label", { class: "density-row" }, [
-    el("span", { text: "Density" }),
+    el("span", { text: label }),
     input,
   ]);
 }

@@ -37,6 +37,7 @@ const state = {
   fetchedAt: 0,
   lastView: "",
   timeframe: loadSettings().timeframe,
+  range: "1D",
   forgetArmed: false,
   forgetTimer: 0,
   announce: "",
@@ -55,6 +56,7 @@ const actions = {
   setQuery,
   refresh,
   setTimeframe,
+  setRange,
   updateSettings,
   openLook,
   back,
@@ -80,6 +82,7 @@ function particleState() {
     on: Boolean(state.link) && state.settings.particles && !motion && !document.hidden,
     style: state.settings.particleStyle,
     density: state.settings.particleDensity,
+    speed: state.settings.particleSpeed,
   };
 }
 
@@ -147,6 +150,11 @@ function setFilter(filter) {
 function setQuery(query) {
   state.query = query.slice(0, 80);
   render({ keepScroll: true, keepFocus: true });
+}
+
+function setRange(range) {
+  state.range = range;
+  render({ keepScroll: true });
 }
 
 function setTimeframe(tf) {

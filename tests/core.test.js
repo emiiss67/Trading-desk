@@ -82,6 +82,24 @@ describe("desk fields", () => {
     assert.equal(look.fontSize, "lg");
     assert.equal(look.particleStyle, "grid");
     assert.equal(sanitizeSettings({ particleDensity: 12 }).particleDensity, 12);
+    const desk = sanitizeSettings({
+      theme: "neon",
+      background: "aurora",
+      fontFace: "mono",
+      particleStyle: "snow",
+      chartWidth: 3,
+      particleSpeed: 80,
+      glow: 10,
+    });
+    assert.equal(desk.theme, "neon");
+    assert.equal(desk.background, "aurora");
+    assert.equal(desk.fontFace, "mono");
+    assert.equal(desk.particleStyle, "snow");
+    assert.equal(desk.chartWidth, 3);
+    assert.equal(desk.particleSpeed, 80);
+    assert.equal(sanitizeSettings({ theme: "system", chartWidth: 9, particleSpeed: -4 }).theme, "matrix");
+    assert.equal(sanitizeSettings({ chartWidth: 9 }).chartWidth, 4);
+    assert.equal(sanitizeSettings({ particleSpeed: -4 }).particleSpeed, 0);
   });
 });
 

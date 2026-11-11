@@ -9,6 +9,7 @@ export function startParticles(canvas) {
   let raf = 0;
   let running = false;
   let style = "motes";
+  let speed = 1;
   let parts = [];
   let width = 0;
   let height = 0;
@@ -73,23 +74,31 @@ export function startParticles(canvas) {
       }
     }
     for (const p of parts) {
+      const step = p.s * speed;
       if (style === "embers") {
-        p.y -= p.s;
-        p.x += Math.sin(p.y * 0.02) * 0.2;
+        p.y -= step;
+        p.x += Math.sin(p.y * 0.02) * 0.2 * speed;
         if (p.y < -8) {
           p.y = height + 8;
           p.x = Math.random() * width;
         }
       } else if (style === "bubbles") {
-        p.y -= p.s * 0.7;
-        p.x += Math.sin(p.y * 0.01) * 0.15;
+        p.y -= step * 0.7;
+        p.x += Math.sin(p.y * 0.01) * 0.15 * speed;
         if (p.y < -12) {
           p.y = height + 12;
           p.x = Math.random() * width;
         }
+      } else if (style === "snow" || style === "matrix") {
+        p.y += step * (style === "matrix" ? 3.2 : 0.85);
+        if (style === "snow") p.x += Math.sin(p.y * 0.03) * 0.35;
+        if (p.y > height + 16) {
+          p.y = -16;
+          p.x = Math.random() * width;
+        }
       } else {
-        p.x += p.vx;
-        p.y += p.vy;
+        p.x += p.vx * speed;
+        p.y += p.vy * speed;
         if (p.x < -12) p.x = width + 12;
         if (p.x > width + 12) p.x = -12;
         if (p.y < -12) p.y = height + 12;
@@ -110,10 +119,14 @@ export function startParticles(canvas) {
         ctx.fillRect(p.x - p.r, p.y + p.r, p.r * 3, 1.4);
         ctx.globalAlpha = 1;
         p.a += 0.03;
-      } else if (style === "bubbles") {
+      } else if (style === "bubbles" || style === "snow") {
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r * 2.4, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.arc(p.x, p.y, style === "snow" ? p.r * 0.9 : p.r * 2.4, 0, Math.PI * 2);
+        if (style === "snow") ctx.fill();
+        else ctx.stroke();
+      } else if (style === "matrix") {
+        ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, monospace";
+        ctx.fillText(p.a > Math.PI ? "1" : "0", p.x, p.y);
       } else if (style === "spark") {
         const flick = 0.35 + Math.abs(Math.sin(p.a + p.x * 0.02)) * 0.65;
         ctx.globalAlpha = p.alpha * flick;
@@ -135,7 +148,8 @@ export function startParticles(canvas) {
     raf = requestAnimationFrame(frame);
   }
 
-  function sync({ on, style: nextStyle, density }) {
+  function sync({ on, style: nextStyle, density, speed: nextSpeed }) {
+    speed = Math.max(0.15, (Number(nextSpeed) || 50) / 50);
     if (!on || document.hidden) {
       running = false;
       cancelAnimationFrame(raf);
