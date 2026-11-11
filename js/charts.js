@@ -2,7 +2,7 @@ import { clampWindow } from "./series.js";
 import { timeframeSeconds } from "./gecko.js";
 
 function fit(canvas) {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
   const w = canvas.clientWidth || 0;
   const h = canvas.clientHeight || 0;
   const bw = Math.max(1, Math.floor(w * dpr));
@@ -13,7 +13,7 @@ function fit(canvas) {
   }
   const ctx = canvas.getContext("2d");
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  return { ctx, w, h };
+  return { ctx, w, h, dpr };
 }
 
 function palette() {
@@ -24,6 +24,7 @@ function palette() {
     muted: pick("--faint", "#756f64"),
     line: pick("--line", "rgba(244,241,232,0.12)"),
     accent: pick("--accent", "#d6f56a"),
+    good: pick("--good", "#3dff8a"),
     bad: pick("--bad", "#ff8f78"),
   };
 }
@@ -161,12 +162,12 @@ export function mountCandles(canvas, candles, trades, { formatPrice, formatTime,
   let moved = 0;
   let lastTap = 0;
   const tip = canvas.parentElement?.querySelector(".tip");
-  const pad = { l: 8, r: 62, t: 14, b: 22 };
+  const pad = { l: 8, r: 92, t: 18, b: 22 };
 
   const draw = () => {
-    const { ctx, w, h } = fit(canvas);
+    const { ctx, w, h, dpr } = fit(canvas);
+    const snap = (value) => Math.round(value * dpr) / dpr;
     ctx.clearRect(0, 0, w, h);
-    if (tip) tip.hidden = true;
     if (w < 40 || h < 40 || !candles.length) return;
     view = clampWindow(candles.length, view.start, view.count);
     const col = palette();
@@ -211,23 +212,25 @@ export function mountCandles(canvas, candles, trades, { formatPrice, formatTime,
       ctx.fillText(formatPrice(value), w - pad.r + 6, y + 4);
     }
     slice.forEach((candle, i) => {
-      const x = pad.l + slot * i + slot / 2;
+      const x = snap(pad.l + slot * i + slot / 2);
       const up = candle.c >= candle.o;
-      const color = up ? col.accent : col.bad;
+      const color = up ? "#3dff8a" : "#ff5d73";
+      const high = snap(yOf(candle.h));
+      const low = snap(yOf(candle.l));
       ctx.strokeStyle = color;
+      ctx.lineWidth = Math.max(1, dpr) / dpr;
       ctx.beginPath();
-      ctx.moveTo(x, yOf(candle.h));
-      ctx.lineTo(x, yOf(candle.l));
+      ctx.moveTo(x, high);
+      ctx.lineTo(x, low);
       ctx.stroke();
-      const bw = Math.max(1.5, Math.min(slot * 0.64, 16));
-      const top = yOf(Math.max(candle.o, candle.c));
-      const bot = yOf(Math.min(candle.o, candle.c));
+      const bw = Math.max(2, Math.min(slot * 0.62, 14));
+      const top = snap(yOf(Math.max(candle.o, candle.c)));
+      const bot = snap(yOf(Math.min(candle.o, candle.c)));
       ctx.fillStyle = color;
-      ctx.globalAlpha = up ? 0.92 : 0.8;
-      ctx.fillRect(x - bw / 2, top, bw, Math.max(1, bot - top));
+      ctx.fillRect(snap(x - bw / 2), top, snap(bw), Math.max(dpr > 1 ? 1.5 / dpr : 1, bot - top));
       const vh = (candle.v / vmax) * (volH - 2);
       ctx.globalAlpha = 0.35;
-      ctx.fillRect(x - bw / 2, h - pad.b - vh, bw, vh);
+      ctx.fillRect(snap(x - bw / 2), snap(h - pad.b - vh), snap(bw), Math.max(0, vh));
       ctx.globalAlpha = 1;
     });
     const levelColor = { entry: col.muted, stop: col.bad, tp: col.accent, trail: col.ink };
@@ -252,6 +255,24 @@ export function mountCandles(canvas, candles, trades, { formatPrice, formatTime,
       const buy = trade.side === "buy";
       triangle(ctx, x, buy ? yOf(candle.l) + 11 : yOf(candle.h) - 11, buy ? "up" : "down", buy ? col.accent : col.bad);
     }
+    const hover = canvas._hover;
+    if (hover >= 0 && hover < slice.length) {
+      const candle = slice[hover];
+      const x = snap(pad.l + slot * hover + slot / 2);
+      const y = snap(yOf(candle.c));
+      ctx.save();
+      ctx.strokeStyle = col.ink;
+      ctx.globalAlpha = 0.55;
+      ctx.lineWidth = Math.max(1, dpr) / dpr;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(x, pad.t);
+      ctx.lineTo(x, plotBottom);
+      ctx.moveTo(pad.l, y);
+      ctx.lineTo(w - pad.r, y);
+      ctx.stroke();
+      ctx.restore();
+    }
     ctx.fillStyle = col.muted;
     ctx.textAlign = "left";
     ctx.fillText(formatTime(slice[0].t), pad.l, h - 6);
@@ -261,6 +282,7 @@ export function mountCandles(canvas, candles, trades, { formatPrice, formatTime,
   };
 
   const hideTip = () => {
+    canvas._hover = -1;
     if (tip) tip.hidden = true;
   };
 
@@ -271,6 +293,7 @@ export function mountCandles(canvas, candles, trades, { formatPrice, formatTime,
       return;
     }
     const candle = book.slice[index];
+    canvas._hover = index;
     tip.hidden = false;
     tip.replaceChildren();
     const title = document.createElement("strong");

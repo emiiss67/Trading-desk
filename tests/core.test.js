@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { describe, it } from "node:test";
 import { addressWithLink, encodeBase64Url, parseLinkHash, parsePrivateLink } from "../js/link.js";
-import { formatPair, formatUsd, formatVilnius } from "../js/format.js";
+import { formatCompactUsd, formatPair, formatUsd, formatVilnius } from "../js/format.js";
 import { clampWindow, candlesFromCoin, normalizeCandles } from "../js/series.js";
 import { parseOhlcv, pickPool } from "../js/gecko.js";
 import { safeImageUrl } from "../js/api.js";
 import { isMint } from "../js/text.js";
-import { iconSources, ipfsCid, pnlPoints, tradeLevels } from "../js/fields.js";
+import { iconSources, ipfsCid, looksTechnical, marketCapLabel, plainReason, pnlPoints, telegramTradeUrl, tradeLevels } from "../js/fields.js";
 import { sanitizeSettings } from "../js/settings.js";
 
 describe("private link", () => {
@@ -101,6 +101,26 @@ describe("desk fields", () => {
     assert.equal(sanitizeSettings({ chartWidth: 9 }).chartWidth, 4);
     assert.equal(sanitizeSettings({ particleSpeed: -4 }).particleSpeed, 0);
   });
+
+  it("reads plain reasons, market cap, and telegram trades", () => {
+    const mint = "BqnmJfZpSUe2Tu2mSCUJ5wrdkrATVi1XAgUz46oku6e8";
+    assert.equal(plainReason({ reason_plain: "Top holder is heavy.", reason: "source=pump authorities=pass" }), "Top holder is heavy.");
+    assert.equal(plainReason({ reason: "extensions=freeze authorities=pass" }), "");
+    assert.equal(looksTechnical("source=pump"), true);
+    assert.equal(plainReason({ reason: "Passed gates. Size 0.55 SOL." }), "Passed gates. Size 0.55 SOL.");
+    assert.equal(marketCapLabel({ market_cap_usd: null, market_cap_pending: true }), "Updating…");
+    assert.equal(marketCapLabel({ market_cap_usd: 64200 }), formatCompactUsd(64200));
+    assert.equal(telegramTradeUrl("buy", mint, 0.05), `https://t.me/Printinggrokbot_bot?text=${encodeURIComponent(`/buy ${mint} 0.05`)}`);
+    assert.equal(telegramTradeUrl("sell", mint, 100), `https://t.me/Printinggrokbot_bot?text=${encodeURIComponent(`/sell ${mint} 100`)}`);
+    const live = candlesFromCoin({
+      candles: { "1m": [{ time: 10, t: 10, open: 1, high: 2, low: 0.5, close: 1.5, volume_usd: 3 }] },
+    }, "1m");
+    assert.equal(live.length, 1);
+    assert.equal(live[0].o, 1);
+    assert.equal(live[0].h, 2);
+    assert.equal(live[0].c, 1.5);
+    assert.equal(live[0].v, 3);
+  });
 });
 
 describe("format", () => {
@@ -162,7 +182,7 @@ describe("sample fixture", () => {
     let files = 0;
     for (const row of snapshot.scanned) {
       assert.equal(isMint(row.mint), true);
-      assert.ok(["bought", "rejected", "watching"].includes(row.decision));
+      assert.ok(["bought", "rejected", "watching", "deferred"].includes(row.decision));
       const file = new URL(`coins/${row.mint}.json`, root);
       if (!existsSync(file)) continue;
       files += 1;

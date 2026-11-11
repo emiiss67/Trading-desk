@@ -1,6 +1,31 @@
-import { num } from "./text.js";
+import { num, str } from "./text.js";
+import { formatCompactUsd } from "./format.js";
 
-const ICON_KEYS = ["icon", "image", "image_url", "icon_url", "logo", "logo_uri"];
+const ICON_KEYS = ["icon_url", "icon", "image", "image_url", "logo", "logo_uri"];
+const TECHNICAL = /(?:source|authorities|extensions|market_cap_source)\s*=/i;
+
+export function looksTechnical(value) {
+  return TECHNICAL.test(str(value, 240));
+}
+
+export function plainReason(row) {
+  const plain = str(row?.reason_plain, 220);
+  if (plain && !looksTechnical(plain)) return plain;
+  const raw = str(row?.reason, 220);
+  if (!raw || looksTechnical(raw)) return "";
+  return raw;
+}
+
+export function marketCapLabel(row) {
+  const cap = num(row?.market_cap_usd);
+  if (cap != null) return formatCompactUsd(cap);
+  return "Updating…";
+}
+
+export function telegramTradeUrl(side, mint, amount) {
+  const text = side === "sell" ? `/sell ${mint} ${amount}` : `/buy ${mint} ${amount}`;
+  return `https://t.me/Printinggrokbot_bot?text=${encodeURIComponent(text)}`;
+}
 
 export function iconField(row) {
   if (!row || typeof row !== "object") return "";
@@ -100,7 +125,7 @@ export function tradeLevels(entry, raw = {}) {
   const levels = [
     { id: "entry", label: "Entry", price: entry },
     { id: "stop", label: "Stop", price: stop },
-    { id: "tp", label: "2×", price: target },
+    { id: "tp", label: "Target", price: target },
   ];
   if (trail != null) levels.push({ id: "trail", label: "Trail", price: trail });
   return levels;

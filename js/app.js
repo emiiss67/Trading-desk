@@ -1,8 +1,6 @@
 import { applySettings, DEFAULTS, loadSettings, saveSettings } from "./settings.js";
 import { forgetLink, linkHash, loadLink, parseLinkHash, parsePrivateLink, saveLink } from "./link.js";
 import { fetchCoin, fetchSnapshot } from "./api.js";
-import { fetchOhlcv } from "./gecko.js";
-import { candlesFromCoin } from "./series.js";
 import { isMint, num, str } from "./text.js";
 import { pnlUsd, portfolioUsd, solEurFrom } from "./fields.js";
 import { formatUsd } from "./format.js";
@@ -32,8 +30,7 @@ const state = {
   fillIds: null,
   glowIds: new Set(),
   coinCache: new Map(),
-  geckoCache: new Map(),
-  geckoFlight: new Map(),
+  tradePick: null,
   fetchedAt: 0,
   lastView: "",
   timeframe: loadSettings().timeframe,
@@ -70,10 +67,7 @@ const actions = {
     loadCoin(mint);
     render({ keepScroll: true });
   },
-  getCandles,
-  clearCandles(mint, tf) {
-    state.geckoCache.delete(`${mint}|${tf}`);
-  },
+  setTradePick,
 };
 
 function particleState() {
@@ -107,10 +101,16 @@ function hist() {
   return { tab: state.tab, overlay: state.overlay };
 }
 
+function setTradePick(mint, side) {
+  state.tradePick = mint && side ? { mint, side } : null;
+  render({ keepScroll: true });
+}
+
 function setTab(tab) {
   const leaving = state.overlay != null;
   state.tab = tab;
   state.overlay = null;
+  state.tradePick = null;
   history[leaving ? "pushState" : "replaceState"](hist(), "", sameUrl());
   render();
 }
@@ -118,6 +118,7 @@ function setTab(tab) {
 function openCoin(mint) {
   if (!isMint(mint)) return;
   state.overlay = { type: "coin", mint };
+  state.tradePick = null;
   history.pushState(hist(), "", sameUrl());
   if (!state.coinCache.has(mint)) state.coinCache.set(mint, { status: "loading" });
   render();
@@ -323,32 +324,6 @@ async function loadCoin(mint) {
   if (state.overlay?.type === "coin" && state.overlay.mint === mint) render({ keepScroll: true });
 }
 
-async function getCandles(mint, tf, coin) {
-  const local = candlesFromCoin(coin, tf);
-  if (local.length) return { candles: local, source: "desk" };
-  const key = `${mint}|${tf}`;
-  const hit = state.geckoCache.get(key);
-  if (hit && Date.now() - hit.at < 60_000) return hit.value;
-  if (state.geckoFlight.has(key)) return state.geckoFlight.get(key);
-  const flight = fetchOhlcv({ mint, timeframe: tf, pool: coin?.pool })
-    .then((candles) => {
-      const value = { candles, source: "gecko" };
-      state.geckoCache.set(key, { at: Date.now(), value });
-      return value;
-    })
-    .catch((err) => {
-      if (err?.name === "AbortError") throw err;
-      const value = { candles: [], error: err?.code || "network" };
-      if (err?.code === "rate" || err?.code === "missing") {
-        state.geckoCache.set(key, { at: Date.now(), value });
-      }
-      return value;
-    })
-    .finally(() => state.geckoFlight.delete(key));
-  state.geckoFlight.set(key, flight);
-  return flight;
-}
-
 function preview() {
   if (!effectsAllowed(state.settings)) {
     toast(window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "Motion is reduced on this phone" : "Effects are off");
@@ -398,7 +373,7 @@ function forget() {
   state.snapshot = null;
   state.overlay = null;
   state.coinCache.clear();
-  state.geckoCache.clear();
+  state.tradePick = null;
   state.prices = null;
   state.fillIds = null;
   state.glowIds = new Set();

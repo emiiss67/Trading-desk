@@ -59,7 +59,7 @@
     },
     {
       "t": "2026-11-10T06:09:45Z",
-      "equity_usd": 756.0
+      "equity_usd": 756
     },
     {
       "t": "2026-11-10T06:24:45Z",
@@ -255,9 +255,12 @@
       "scanned_at": "2026-11-10T17:36:45Z",
       "created_at": "2026-11-10T11:39:45Z",
       "decision": "watching",
-      "reason": "Fresh curve. Waiting on a second quiet minute.",
-      "price_usd": 6.2e-06,
-      "market_cap_usd": 11400
+      "reason": "source=pump authorities=pass extensions=freeze",
+      "price_usd": 0.0000062,
+      "market_cap_usd": null,
+      "reason_plain": "Fresh curve. Waiting on a second quiet minute.",
+      "icon_url": "icons/eel.svg",
+      "market_cap_pending": true
     },
     {
       "mint": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
@@ -267,9 +270,11 @@
       "scanned_at": "2026-11-10T17:21:45Z",
       "created_at": "2024-05-24T17:39:45Z",
       "decision": "watching",
-      "reason": "Public mint so the chart can fall back to GeckoTerminal. Sample gates, not a signal.",
-      "price_usd": 2.82e-06,
-      "market_cap_usd": 248000000
+      "reason": "Public mint in the sample. No desk candles yet.",
+      "price_usd": 0.00000282,
+      "market_cap_usd": 248000000,
+      "reason_plain": "Public mint in the sample. No desk candles yet.",
+      "icon_url": "icons/bonk.svg"
     },
     {
       "mint": "C99nWSDkfrwNjwd7LgcsFy6hThb2HLpj7T4n1gwMYhgp",
@@ -280,8 +285,10 @@
       "created_at": "2026-11-10T08:39:45Z",
       "decision": "bought",
       "reason": "Passed gates. Sold into strength.",
-      "price_usd": 1.12e-05,
-      "market_cap_usd": 18600
+      "price_usd": 0.0000112,
+      "market_cap_usd": 18600,
+      "reason_plain": "Passed gates. Sold into strength.",
+      "icon_url": "icons/cpth.svg"
     },
     {
       "mint": "7GTeEPSrYKuRXbNvuD4Qsy3gYQWiyEypwYjmUTz1bM8j",
@@ -292,8 +299,10 @@
       "created_at": "2026-11-09T21:39:45Z",
       "decision": "bought",
       "reason": "Passed gates. Size 0.40 SOL.",
-      "price_usd": 3.7e-05,
-      "market_cap_usd": 28400
+      "price_usd": 0.000037,
+      "market_cap_usd": 28400,
+      "reason_plain": "Passed gates. Size 0.40 SOL.",
+      "icon_url": "icons/hrbr.svg"
     },
     {
       "mint": "BqnmJfZpSUe2Tu2mSCUJ5wrdkrATVi1XAgUz46oku6e8",
@@ -304,8 +313,10 @@
       "created_at": "2026-11-10T12:39:45Z",
       "decision": "bought",
       "reason": "Passed gates. Size 0.55 SOL.",
-      "price_usd": 2.44e-05,
-      "market_cap_usd": 64200
+      "price_usd": 0.0000244,
+      "market_cap_usd": 64200,
+      "reason_plain": "Passed gates. Size 0.55 SOL.",
+      "icon_url": "icons/ngls.svg"
     },
     {
       "mint": "5WWZAL2eQhWzoMBPDt6sn5B1THzoDmMWRbnSbA5X4Q3k",
@@ -316,8 +327,10 @@
       "created_at": "2026-11-08T17:39:45Z",
       "decision": "watching",
       "reason": "Clean so far. Holders still thin.",
-      "price_usd": 1.33e-05,
-      "market_cap_usd": 22100
+      "price_usd": 0.0000133,
+      "market_cap_usd": 22100,
+      "reason_plain": "Clean so far. Holders still thin.",
+      "icon_url": "icons/crne.svg"
     },
     {
       "mint": "4UyZxsHsCcoaFuG1D1ZmWRk9hr91dWN1mTQLSDaSgK9M",
@@ -326,10 +339,14 @@
       "icon": "icons/missing-violet.svg",
       "scanned_at": "2026-11-10T14:22:45Z",
       "created_at": "2026-11-10T13:39:45Z",
-      "decision": "rejected",
-      "reason": "Top holder 28% is over the 20% ceiling.",
-      "price_usd": 3.1e-05,
-      "market_cap_usd": 41000
+      "decision": "deferred",
+      "reason": "authorities=pass source=rpc",
+      "price_usd": 0.000031,
+      "market_cap_usd": 41000,
+      "reason_plain": "Checking again soon",
+      "icon_url": "icons/missing-violet.svg",
+      "status": "deferred",
+      "retry_at": "2026-11-10T17:50:00Z"
     },
     {
       "mint": "Mg4Szu542qoMjBipJxAqobWSCiQajMi8j5W7ZSnYGgcF",
@@ -340,8 +357,10 @@
       "created_at": "2026-11-10T16:59:45Z",
       "decision": "rejected",
       "reason": "Liquidity $2.1k is under the $8k floor.",
-      "price_usd": 4.4e-06,
-      "market_cap_usd": 6900
+      "price_usd": 0.0000044,
+      "market_cap_usd": 6900,
+      "reason_plain": "Liquidity $2.1k is under the $8k floor.",
+      "icon_url": "icons/lowt.svg"
     }
   ],
   "positions": [
@@ -350,32 +369,36 @@
       "name": "Nightglass",
       "symbol": "NGLS",
       "icon": "icons/ngls.svg",
-      "stop_usd": 1.4924e-05,
-      "take_profit_usd": 3.458e-05,
+      "stop_usd": 0.000014924,
+      "take_profit_usd": 0.00003458,
       "opened_at": "2026-11-10T15:05:45Z",
       "qty_tokens": 5632967.033,
-      "entry_usd": 1.82e-05,
-      "mark_usd": 2.44e-05,
+      "entry_usd": 0.0000182,
+      "mark_usd": 0.0000244,
       "cost_usd": 102.52,
       "value_usd": 137.44,
       "pnl_usd": 34.92,
-      "pnl_pct": 34.07
+      "pnl_pct": 34.07,
+      "market_cap_usd": 64200,
+      "icon_url": "icons/ngls.svg"
     },
     {
       "mint": "7GTeEPSrYKuRXbNvuD4Qsy3gYQWiyEypwYjmUTz1bM8j",
       "name": "Harbor",
       "symbol": "HRBR",
       "icon": "icons/hrbr.svg",
-      "stop_usd": 3.444e-05,
-      "take_profit_usd": 6.97e-05,
+      "stop_usd": 0.00003444,
+      "take_profit_usd": 0.0000697,
       "opened_at": "2026-11-10T15:48:45Z",
       "qty_tokens": 1818536.5854,
-      "entry_usd": 4.1e-05,
-      "mark_usd": 3.7e-05,
+      "entry_usd": 0.000041,
+      "mark_usd": 0.000037,
       "cost_usd": 74.56,
       "value_usd": 67.29,
       "pnl_usd": -7.27,
-      "pnl_pct": -9.76
+      "pnl_pct": -9.76,
+      "market_cap_usd": 28400,
+      "icon_url": "icons/hrbr.svg"
     }
   ],
   "activity": [
@@ -388,7 +411,7 @@
       "side": "sell",
       "at": "2026-11-10T16:55:45Z",
       "qty_tokens": 7169230.7692,
-      "price_usd": 1.12e-05,
+      "price_usd": 0.0000112,
       "sol": 0.43,
       "usd": 80.3,
       "pnl_usd": 15.06,
@@ -404,7 +427,7 @@
       "side": "buy",
       "at": "2026-11-10T16:12:45Z",
       "qty_tokens": 7169230.7692,
-      "price_usd": 9.1e-06,
+      "price_usd": 0.0000091,
       "sol": 0.35,
       "usd": 65.24,
       "pnl_usd": null,
@@ -420,7 +443,7 @@
       "side": "buy",
       "at": "2026-11-10T15:48:45Z",
       "qty_tokens": 1818536.5854,
-      "price_usd": 4.1e-05,
+      "price_usd": 0.000041,
       "sol": 0.4,
       "usd": 74.56,
       "pnl_usd": null,
@@ -436,7 +459,7 @@
       "side": "buy",
       "at": "2026-11-10T15:05:45Z",
       "qty_tokens": 5632967.033,
-      "price_usd": 1.82e-05,
+      "price_usd": 0.0000182,
       "sol": 0.55,
       "usd": 102.52,
       "pnl_usd": null,

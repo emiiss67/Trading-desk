@@ -16,7 +16,7 @@
       "id": "sample",
       "label": "Sample only",
       "pass": true,
-      "detail": "This row exists so a phone can load a public chart. It is not a desk signal."
+      "detail": "Sample mint with no desk candles."
     }
   ],
   "trades": [],
