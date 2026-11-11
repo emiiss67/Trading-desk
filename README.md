@@ -133,7 +133,7 @@ Links to pump.fun, Solscan, and DexScreener are built from the mint. URLs inside
 
 ## Phone UI
 
-- **Home** is the book: today’s P&L, portfolio value, a P&L line, and a portfolio line with a coin icon and BUY/SELL label on each fill. Wallet SOL is shown with an EUR value from `wallet.sol_eur`, or from CoinGecko when that field is missing.
+- **Home** is the book: portfolio value and a portfolio line with a coin icon and BUY/SELL label on each fill. Wallet SOL is shown with an EUR value from `wallet.sol_eur`, or from CoinGecko when that field is missing.
 - **Coins** is the scan list: icon, name, symbol, age, decision, reason, search, and filters.
 - A coin opens the price, market stats, gates, contract copy, and a candlestick chart (1m / 5m / 15m / 1h) with volume and the desk’s buys and sells. Drag pans, pinch or wheel zooms, double-tap resets.
 - **Positions** and **Tape** are the open book and the fills.

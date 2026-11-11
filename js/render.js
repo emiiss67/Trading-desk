@@ -15,7 +15,7 @@ import {
 import { coinIcon, icon } from "./icons.js";
 import { ACCENTS, CHART_STYLES, PARTICLE_STYLES, THEMES, TIMEFRAMES } from "./settings.js";
 import { mountCandles, mountMarkedLine } from "./charts.js";
-import { curvePoints, entryPrice, iconField, iconSources, pnlPoints, pnlUsd, portfolioUsd, tradeLevels } from "./fields.js";
+import { curvePoints, entryPrice, iconField, iconSources, portfolioUsd, tradeLevels } from "./fields.js";
 import { safeImageUrl } from "./api.js";
 import { candlesFromCoin, normalizeTrades } from "./series.js";
 import { countUp, effectsAllowed } from "./effects.js";
@@ -379,37 +379,25 @@ function homeView(state, actions, rise) {
   const currency = state.settings.currency;
   const usdRate = solUsd(state);
   const book = portfolioUsd(snap);
-  const pnl = pnlUsd(snap);
   const sol = num(snap?.wallet?.sol);
   const eurRate = num(state.solEur);
   const equity = book == null ? null : formatPair(book, usdRate, currency);
-  const pnlPair = pnl == null ? null : formatPair(pnl, usdRate, currency, { sign: true });
   const points = curvePoints(snap).map((point) => ({
-    t: point.t,
-    v: currency === "SOL" && usdRate ? point.v / usdRate : point.v,
-  }));
-  const profit = pnlPoints(snap, curvePoints(snap)).map((point) => ({
     t: point.t,
     v: currency === "SOL" && usdRate ? point.v / usdRate : point.v,
   }));
   const markers = tradeMarkers(state);
   const bookCanvas = points.length ? el("canvas", { class: "equity book-line", "aria-label": "Portfolio value" }) : null;
-  const pnlCanvas = profit.length ? el("canvas", { class: "equity pnl-line", "aria-label": "Profit and loss" }) : null;
   const walletBits = [];
   if (sol != null) walletBits.push(el("span", {}, [`${formatSolAmount(sol)} SOL`]));
   if (sol != null && eurRate) walletBits.push(el("span", {}, [formatEur(sol * eurRate)]));
   const node = el("section", { class: `home ${rise ? "rise" : ""}` }, [
     sampleRibbon(snap),
-    pnlPair ? el("p", { class: `hero-pnl ${pnl < 0 ? "down" : "up"}${anim ? " pnl-glow" : ""}`, "data-hero": "pnl", text: pnlPair.primary }) : null,
     equity ? el("p", { class: "hero-book", "data-hero": "book" }, [
       el("span", { text: equity.primary }),
       el("small", { text: "Portfolio" }),
     ]) : null,
     walletBits.length ? el("p", { class: "wallet-line" }, walletBits) : null,
-    pnlCanvas ? el("div", { class: "chart-block" }, [
-      el("div", { class: "chart-head" }, [el("h2", { text: "P&L" })]),
-      pnlCanvas,
-    ]) : null,
     bookCanvas ? el("div", { class: "chart-block" }, [
       el("div", { class: "chart-head" }, [el("h2", { text: "Portfolio" })]),
       bookCanvas,
@@ -424,13 +412,8 @@ function homeView(state, actions, rise) {
     const formatY = (value) => (currency === "SOL" ? formatSolAmount(value) : formatCompactUsd(value));
     const chartStyle = state.settings.chartStyle === "line" || state.settings.chartStyle === "candles" ? state.settings.chartStyle : "area";
     if (bookCanvas?.isConnected) track(mountMarkedLine(bookCanvas, points, markers, { formatY, style: chartStyle }));
-    if (pnlCanvas?.isConnected) track(mountMarkedLine(pnlCanvas, profit, [], { formatY, style: chartStyle }));
     if (anim && effectsAllowed(state.settings)) {
-      const pn = node.querySelector('[data-hero="pnl"]');
       const bk = node.querySelector('[data-hero="book"] span');
-      if (pn && anim.from.pnlUsd != null && anim.to.pnlUsd != null) {
-        countUp(pn, anim.from.pnlUsd, anim.to.pnlUsd, (value) => formatPair(value, usdRate, currency, { sign: true }).primary);
-      }
       if (bk && anim.from.equityUsd != null && anim.to.equityUsd != null) {
         countUp(bk, anim.from.equityUsd, anim.to.equityUsd, (value) => formatPair(value, usdRate, currency).primary);
       }
