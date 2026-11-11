@@ -16,7 +16,7 @@ import {
 import { coinIcon, icon } from "./icons.js";
 import { ACCENTS, BACKGROUNDS, CHART_STYLES, FONT_FACES, PARTICLE_STYLES, THEMES, TIMEFRAMES } from "./settings.js";
 import { mountCandles, mountMarkedLine, mountSpark } from "./charts.js";
-import { curvePoints, entryPrice, iconField, iconSources, looksTechnical, marketCapLabel, plainReason, portfolioUsd, telegramTradeUrl, tradeLevels } from "./fields.js";
+import { coinStatGrid, curvePoints, entryPrice, iconField, iconSources, looksTechnical, marketCapLabel, mergedCoin, plainReason, portfolioUsd, telegramTradeUrl, tokenSupply, tradeLevels } from "./fields.js";
 import { safeImageUrl } from "./api.js";
 import { candlesFromCoin, normalizeTrades } from "./series.js";
 import { countUp, effectsAllowed } from "./effects.js";
@@ -728,7 +728,7 @@ function coinView(state, actions, rise) {
         decision ? el("p", { class: `stamp ${decision}`, text: decisionLabel(decision) }) : null,
       ]),
     ]),
-    price == null ? null : el("p", { class: "price", text: priceText(state, price) }),
+    quoteButton(state, actions, coin, row, price),
     reason ? el("p", { class: "lede", text: reason }) : null,
     !entry || entry.status === "loading"
       ? skeleton(2)
@@ -737,17 +737,31 @@ function coinView(state, actions, rise) {
         : entry.status === "error"
           ? notice("The coin file could not be read.", () => actions.reloadCoin(mint))
           : detailBody(state, actions, coin, row, tf),
+    el("div", { class: "end-spacer", "aria-hidden": "true" }),
+  ]);
+}
+
+function quoteButton(state, actions, coin, row, price) {
+  const mc = state.quote === "mc";
+  const figure = mc ? marketCapLabel(capSource(state, mergedCoin(coin, row))) : (price == null ? "Updating…" : priceText(state, price));
+  return el("div", { class: "quote" }, [
+    el("button", {
+      type: "button",
+      class: "price haptic",
+      onclick: () => actions.setQuote(mc ? "price" : "mc"),
+      "aria-label": mc ? "Show price" : "Show market cap",
+      text: figure,
+    }),
+    el("p", { class: "quote-hint" }, [
+      el("span", { class: mc ? "" : "on", text: "Price" }),
+      " / ",
+      el("span", { class: mc ? "on" : "", text: "MC" }),
+    ]),
   ]);
 }
 
 function detailBody(state, actions, coin, row, tf) {
-  const stats = [["Market cap", marketCapLabel(capSource(state, { ...row, ...coin }))]];
-  const liq = num(coin.liquidity_usd);
-  const holders = num(coin.holders);
-  const top = num(coin.top_holder_pct);
-  if (liq != null) stats.push(["Liquidity", formatCompactUsd(liq)]);
-  if (holders != null) stats.push(["Holders", formatQty(holders)]);
-  if (top != null) stats.push(["Top holder", `${top.toLocaleString("en-US", { maximumFractionDigits: 1 })}%`]);
+  const stats = coinStatGrid(coin, row);
   const region = el("div", { class: "chart-region", "data-chart-region": "1" });
   const links = externalLinks(coin.mint);
   queueMicrotask(() => hydrateChart(region, state, coin, tf));
@@ -835,14 +849,25 @@ function hydrateChart(region, state, coin, tf) {
     region.replaceChildren(el("p", { class: "chart-status", text: "Not enough trades yet" }));
     return;
   }
+  const supply = tokenSupply(mergedCoin(coin, rowByMint(state, coin.mint)));
+  const mc = state.quote === "mc" && supply != null && supply > 0;
+  const scale = mc ? supply : 1;
+  const candles = scale === 1 ? local : local.map((candle) => ({
+    ...candle,
+    o: candle.o * scale,
+    h: candle.h * scale,
+    l: candle.l * scale,
+    c: candle.c * scale,
+  }));
   const formatTime = (unix) => formatVilniusClock(unix);
   formatTime.full = (unix) => formatVilnius(new Date(unix * 1000).toISOString());
-  paintChart(region, local, normalizeTrades(coin.trades), {
-    formatPrice: (value) => priceText(state, value),
+  const levels = levelsFor(state, coin).map((level) => ({ ...level, price: level.price * scale }));
+  paintChart(region, candles, normalizeTrades(coin.trades), {
+    formatPrice: (value) => (mc ? formatCompactUsd(value) : priceText(state, value)),
     formatTime,
     timeframe: tf,
-    source: "Desk candles",
-    levels: levelsFor(state, coin),
+    source: mc ? "Desk candles · market cap" : "Desk candles",
+    levels,
   });
 }
 
@@ -1111,7 +1136,8 @@ function paintTrade(state, actions) {
     return;
   }
   const bar = existing || el("div", { id: "tradebar", class: "tradebar" });
-  if (!existing) shell.append(bar);
+  const dock = document.getElementById("dock");
+  if (!existing) shell.insertBefore(bar, dock || null);
   bar.replaceChildren(tradeControls(state, actions, state.overlay.mint));
 }
 

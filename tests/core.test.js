@@ -7,7 +7,7 @@ import { clampWindow, candlesFromCoin, normalizeCandles } from "../js/series.js"
 import { parseOhlcv, pickPool } from "../js/gecko.js";
 import { safeImageUrl } from "../js/api.js";
 import { isMint } from "../js/text.js";
-import { iconSources, ipfsCid, looksTechnical, marketCapLabel, plainReason, pnlPoints, telegramTradeUrl, tradeLevels } from "../js/fields.js";
+import { coinStatGrid, iconSources, ipfsCid, looksTechnical, loadQuote, marketCapLabel, plainReason, pnlPoints, saveQuote, telegramTradeUrl, tokenSupply, tradeLevels } from "../js/fields.js";
 import { sanitizeSettings } from "../js/settings.js";
 
 describe("private link", () => {
@@ -120,6 +120,39 @@ describe("desk fields", () => {
     assert.equal(live[0].h, 2);
     assert.equal(live[0].c, 1.5);
     assert.equal(live[0].v, 3);
+    assert.equal(tokenSupply({ supply: 1000, price_usd: 2, market_cap_usd: 50 }), 1000);
+    assert.equal(tokenSupply({ price_usd: 2, market_cap_usd: 50 }), 25);
+    const stats = Object.fromEntries(coinStatGrid({
+      price_usd: 2,
+      market_cap_usd: 50,
+      liquidity_usd: 10,
+      holders: 4,
+      created_at: "2026-11-10T17:39:45Z",
+      market_cap_source: "pump",
+      candles: { "1m": [
+        { t: 1_000, o: 1, h: 1, l: 1, c: 1, v: 5 },
+        { t: 1_000 + 300, o: 1, h: 2, l: 1, c: 2, v: 7 },
+      ] },
+    }, {}));
+    assert.equal(stats["Market cap"], formatCompactUsd(50));
+    assert.equal(stats["Liquidity"], formatCompactUsd(10));
+    assert.equal(stats.Holders, "4");
+    assert.equal(stats.Buyers, "Updating…");
+    assert.equal(stats["Top 10"], "Updating…");
+    assert.equal(stats["Dev holding"], "Updating…");
+    assert.equal(stats["Bonding curve"], "Updating…");
+    assert.equal(stats.FDV, "Updating…");
+    assert.equal(stats.Source, "pump");
+    assert.equal(stats["Volume 5m"], formatCompactUsd(7));
+    assert.doesNotMatch(Object.values(stats).join(" "), /—|N\/A/);
+    const memory = { store: {} };
+    globalThis.localStorage = {
+      getItem(key) { return memory.store[key] ?? null; },
+      setItem(key, value) { memory.store[key] = String(value); },
+    };
+    assert.equal(saveQuote("mc"), "mc");
+    assert.equal(loadQuote(), "mc");
+    assert.equal(saveQuote("price"), "price");
   });
 });
 

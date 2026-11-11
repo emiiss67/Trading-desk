@@ -2,7 +2,7 @@ import { applySettings, DEFAULTS, loadSettings, saveSettings } from "./settings.
 import { forgetLink, linkHash, loadLink, parseLinkHash, parsePrivateLink, saveLink } from "./link.js";
 import { fetchCoin, fetchSnapshot } from "./api.js";
 import { isMint, num, str } from "./text.js";
-import { pnlUsd, portfolioUsd, solEurFrom } from "./fields.js";
+import { loadQuote, pnlUsd, portfolioUsd, saveQuote, solEurFrom } from "./fields.js";
 import { formatUsd } from "./format.js";
 import { paintApp } from "./render.js";
 import { burst, countUp, effectsAllowed, toast } from "./effects.js";
@@ -31,6 +31,7 @@ const state = {
   glowIds: new Set(),
   coinCache: new Map(),
   tradePick: null,
+  quote: loadQuote(),
   fetchedAt: 0,
   lastView: "",
   timeframe: loadSettings().timeframe,
@@ -68,6 +69,7 @@ const actions = {
     render({ keepScroll: true });
   },
   setTradePick,
+  setQuote,
 };
 
 function particleState() {
@@ -101,9 +103,17 @@ function hist() {
   return { tab: state.tab, overlay: state.overlay };
 }
 
+function setQuote(quote) {
+  state.quote = saveQuote(quote);
+  render({ keepScroll: true });
+}
+
 function setTradePick(mint, side) {
+  const main = document.getElementById("main");
+  const nearEnd = main ? main.scrollHeight - main.scrollTop - main.clientHeight < 64 : false;
   state.tradePick = mint && side ? { mint, side } : null;
   render({ keepScroll: true });
+  if (nearEnd && main) main.scrollTop = main.scrollHeight;
 }
 
 function setTab(tab) {
