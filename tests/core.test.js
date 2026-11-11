@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { describe, it } from "node:test";
-import { addressWithLink, encodeBase64Url, parseLinkHash } from "../js/link.js";
+import { addressWithLink, encodeBase64Url, parseLinkHash, parsePrivateLink } from "../js/link.js";
 import { formatPair, formatUsd, formatVilnius } from "../js/format.js";
 import { clampWindow, candlesFromCoin, normalizeCandles } from "../js/series.js";
 import { parseOhlcv, pickPool } from "../js/gecko.js";
@@ -29,6 +29,18 @@ describe("private link", () => {
     assert.equal(Object.hasOwn(manifest, "start_url"), false);
     const lock = readFileSync(new URL("../js/render.js", import.meta.url), "utf8");
     assert.match(lock, /Open the private link in Safari first, then Share > Add to Home Screen/);
+  });
+
+  it("accepts a pasted full link or only the hash", () => {
+    const base = "https://emiiss67.github.io/Trading-desk/sample";
+    const hash = `#d=${encodeBase64Url(base)}&k=sample-desk-key-1`;
+    const full = `https://emiiss67.github.io/Trading-desk/${hash}`;
+    assert.equal(parsePrivateLink(full).base, base);
+    assert.equal(parsePrivateLink(`  ${hash}  `).key, "sample-desk-key-1");
+    assert.equal(parsePrivateLink(hash.slice(1)).base, base);
+    assert.equal(parsePrivateLink("https://emiiss67.github.io/Trading-desk/").ok, false);
+    assert.equal(parsePrivateLink(`#d=${encodeBase64Url(base)}&k=short`).ok, false);
+    assert.equal(parsePrivateLink(`#d=${encodeBase64Url("javascript:alert(1)")}&k=sample-desk-key-1`).ok, false);
   });
 
   it("rejects missing, short, and non-https links", () => {

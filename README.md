@@ -22,6 +22,7 @@ https://<pages-host>/<repo>/#d=<base64url>&k=<access-id>
 - `k` is a random id, 8–128 characters from `[A-Za-z0-9_-]`
 - The hash is never sent to a server. With no hash, or a bad one, the phone shows a lock screen and no desk data.
 - After a valid link opens, the app keeps `#d` and `k` in the address bar. Add to Home Screen from that Safari page so the icon launches the same URL, hash included. The manifest has no `start_url`, because iOS would otherwise open the icon without the hash.
+- On the lock screen, paste the full private link or the `#d=…&k=…` part and tap Unlock. That saves the link in this app’s own storage, including inside the home-screen app.
 - iOS home-screen apps do not share Safari storage. The first launch from the icon reads the hash and saves the link into the home-screen app’s own `localStorage`.
 - **Forget this device** (Appearance) deletes that saved link, any cached JSON, and the hash.
 

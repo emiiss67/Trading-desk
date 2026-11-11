@@ -1,5 +1,5 @@
 import { applySettings, DEFAULTS, loadSettings, saveSettings } from "./settings.js";
-import { forgetLink, linkHash, loadLink, parseLinkHash, saveLink } from "./link.js";
+import { forgetLink, linkHash, loadLink, parseLinkHash, parsePrivateLink, saveLink } from "./link.js";
 import { fetchCoin, fetchSnapshot } from "./api.js";
 import { fetchOhlcv } from "./gecko.js";
 import { candlesFromCoin } from "./series.js";
@@ -38,6 +38,8 @@ const state = {
   forgetArmed: false,
   forgetTimer: 0,
   announce: "",
+  unlockError: "",
+  unlockDraft: "",
 };
 
 const particles = startParticles(document.getElementById("particles"));
@@ -55,6 +57,7 @@ const actions = {
   openLook,
   back,
   copy: copyMint,
+  unlock: unlockFromText,
   preview,
   armForget,
   resetLook,
@@ -364,6 +367,8 @@ function forget() {
   state.pulseShown = null;
   state.pendingAnim = null;
   state.forgetArmed = false;
+  state.unlockError = "";
+  state.unlockDraft = "";
   if (window.caches) caches.delete("desk-json-v1").catch(() => {});
   history.replaceState(null, "", `${location.pathname}${location.search}`);
   render();
@@ -405,6 +410,23 @@ function bindPull() {
   };
   main.addEventListener("touchend", end);
   main.addEventListener("touchcancel", end);
+}
+
+function unlockFromText(raw) {
+  const parsed = parsePrivateLink(raw);
+  if (!parsed.ok) {
+    state.unlockDraft = typeof raw === "string" ? raw : "";
+    state.unlockError = "That link isn’t valid. Paste the full private link, or the #d=…&k=… part.";
+    render();
+    return;
+  }
+  state.unlockError = "";
+  state.unlockDraft = "";
+  state.invalidHash = false;
+  saveLink(parsed);
+  state.link = parsed;
+  pinPrivateHash();
+  refresh();
 }
 
 function applyLocation() {
