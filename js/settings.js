@@ -12,8 +12,13 @@ export const PARTICLE_STYLES = [
   { id: "embers", name: "Embers" },
   { id: "orbits", name: "Orbits" },
   { id: "threads", name: "Threads" },
+  { id: "spark", name: "Spark" },
 ];
 export const TIMEFRAMES = ["1m", "5m", "15m", "1h"];
+export const CHART_STYLES = [
+  { id: "area", name: "Area" },
+  { id: "line", name: "Line" },
+];
 
 const KEY = "desk.settings.v1";
 
@@ -27,6 +32,7 @@ export const DEFAULTS = {
   density: "comfy",
   timeframe: "5m",
   currency: "USD",
+  chartStyle: "area",
 };
 
 export function normalizeHex(value) {
@@ -69,6 +75,7 @@ export function sanitizeSettings(raw) {
   next.density = raw.density === "compact" ? "compact" : "comfy";
   if (TIMEFRAMES.includes(raw.timeframe)) next.timeframe = raw.timeframe;
   next.currency = raw.currency === "SOL" ? "SOL" : "USD";
+  next.chartStyle = raw.chartStyle === "line" ? "line" : "area";
   return next;
 }
 

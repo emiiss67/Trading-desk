@@ -10,7 +10,8 @@
   },
   "wallet": {
     "sol": 3.15,
-    "sol_usd": 186.4
+    "sol_usd": 186.4,
+    "sol_eur": 171.2
   },
   "equity": {
     "usd": 791.89,

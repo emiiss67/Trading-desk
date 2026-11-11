@@ -1,5 +1,12 @@
 const TZ = "Europe/Vilnius";
 
+export function formatEur(value, { sign = false } = {}) {
+  if (value == null || !Number.isFinite(value)) return "";
+  const abs = Math.abs(value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const prefix = value < 0 ? "-" : sign && value > 0 ? "+" : "";
+  return `${prefix}€${abs}`;
+}
+
 export function formatUsd(value, { sign = false, digits = 2 } = {}) {
   if (value == null || !Number.isFinite(value)) return "—";
   const abs = Math.abs(value).toLocaleString("en-US", {

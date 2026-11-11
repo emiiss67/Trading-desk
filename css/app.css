@@ -506,7 +506,25 @@ main {
 .chart-block { padding-top: 8px; }
 .chart-head, .legend { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
 .equity, .candles { width: 100%; display: block; touch-action: none; }
-.equity { height: 190px; }
+.equity { height: 168px; }
+.hero-pnl {
+  margin: 8px 16px 0;
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: clamp(46px, 14vw, 64px);
+  letter-spacing: -0.045em;
+  line-height: 0.95;
+  font-variant-numeric: tabular-nums;
+}
+.hero-book { margin: 6px 16px 0; display: flex; align-items: baseline; gap: 8px; }
+.hero-book span {
+  font-family: var(--serif);
+  font-size: 28px;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.hero-book small { color: var(--faint); letter-spacing: 0.14em; text-transform: uppercase; font-size: 11px; }
+.wallet-line { display: flex; gap: 14px; margin: 8px 16px 4px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .candles { height: 280px; cursor: grab; }
 .health { padding: 8px 0 24px; }
 .health h2, .section-label { padding: 16px 16px 8px; }

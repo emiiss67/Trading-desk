@@ -10,21 +10,24 @@ import {
   formatSolAmount,
   formatVilnius,
   formatVilniusClock,
+  formatEur,
 } from "./format.js";
 import { coinIcon, icon } from "./icons.js";
-import { ACCENTS, PARTICLE_STYLES, THEMES, TIMEFRAMES } from "./settings.js";
-import { mountCandles, mountEquity } from "./charts.js";
+import { ACCENTS, CHART_STYLES, PARTICLE_STYLES, THEMES, TIMEFRAMES } from "./settings.js";
+import { mountCandles, mountMarkedLine } from "./charts.js";
+import { curvePoints, entryPrice, iconField, iconSources, pnlPoints, pnlUsd, portfolioUsd, tradeLevels } from "./fields.js";
+import { safeImageUrl } from "./api.js";
 import { candlesFromCoin, normalizeTrades } from "./series.js";
 import { countUp, effectsAllowed } from "./effects.js";
 import { hostOf } from "./link.js";
 
 const TABS = [
-  ["scan", "Scan", "Scanned coins"],
-  ["positions", "Positions", "Open positions"],
+  ["home", "Home", "Portfolio"],
+  ["scan", "Coins", "Scanned coins"],
+  ["positions", "Book", "Open positions"],
   ["tape", "Tape", "Fills"],
-  ["desk", "Desk", "Desk overview"],
 ];
-const TITLES = { scan: "Scanned", positions: "Positions", tape: "Tape", desk: "Desk" };
+const TITLES = { home: "Book", scan: "Coins", positions: "Open", tape: "Tape", desk: "Book" };
 const charts = [];
 
 function destroyCharts() {
@@ -205,7 +208,7 @@ function coinButton(state, row, actions, extra = "") {
   const glow = state.glowIds?.has(str(row.id, 80)) ? "is-new-buy" : "";
   const cls = ["coin-row", "haptic", decision, flashClass(state, mint), glow, extra].filter(Boolean).join(" ");
   const body = [
-    coinIcon(row.icon, row.symbol, row.name, state.link.base),
+    coinIcon(iconField(row), row.symbol, row.name, state.link.base),
     el("span", { class: "coin-copy" }, [
       el("span", { class: "coin-name", text: str(row.name, 48) || "Unnamed" }),
       el("span", { class: "coin-meta", text: metaLine(row) }),
@@ -293,15 +296,15 @@ function positionCard(state, row, actions) {
   const mint = row.mint;
   return el("article", { class: `book ${flashClass(state, mint)}` }, [
     el("button", { type: "button", class: "book-head haptic", onclick: () => isMint(mint) && actions.openCoin(mint) }, [
-      coinIcon(row.icon, row.symbol, row.name, state.link.base),
+      coinIcon(iconField(row), row.symbol, row.name, state.link.base),
       el("span", {}, [
         el("span", { class: "coin-name", text: str(row.name, 48) || "Unnamed" }),
-        el("span", { class: "coin-meta", text: `${str(row.symbol, 12)} · ${formatQty(num(row.qty_tokens))} tokens` }),
+        el("span", { class: "coin-meta", text: [str(row.symbol, 12), num(row.qty_tokens) == null ? "" : `${formatQty(num(row.qty_tokens))} tokens`].filter(Boolean).join(" · ") }),
       ]),
-      el("span", { class: pnl != null && pnl < 0 ? "pnl down" : "pnl up" }, [
+      pnl == null ? null : el("span", { class: pnl < 0 ? "pnl down" : "pnl up" }, [
         el("b", { text: pair.primary }),
-        pair.secondary ? el("small", { text: pair.secondary }) : null,
-        el("small", { text: formatPct(num(row.pnl_pct)) }),
+        pair.secondary && pair.secondary !== "—" ? el("small", { text: pair.secondary }) : null,
+        num(row.pnl_pct) == null ? null : el("small", { text: formatPct(num(row.pnl_pct)) }),
       ]),
     ]),
     el("dl", { class: "levels" }, [
@@ -314,10 +317,10 @@ function positionCard(state, row, actions) {
 }
 
 function level(label, value) {
-  const missing = !value || value === "—";
+  if (!value || value === "—") return null;
   return el("div", {}, [
     el("dt", { text: label }),
-    missing ? el("dd", {}, [el("span", { class: "na", text: "n/a" })]) : el("dd", { text: value }),
+    el("dd", { text: value }),
   ]);
 }
 
@@ -351,7 +354,7 @@ function fillRow(state, row, actions) {
   const id = str(row.id, 80);
   return el("article", { class: `fill ${side} ${state.glowIds?.has(id) ? "is-new-buy" : ""}` }, [
     el("button", { type: "button", class: "fill-main haptic", onclick: () => isMint(row.mint) && actions.openCoin(row.mint) }, [
-      coinIcon(row.icon, row.symbol, row.name, state.link.base),
+      coinIcon(iconField(row), row.symbol, row.name, state.link.base),
       el("span", {}, [
         el("span", { class: "coin-name", text: `${side === "sell" ? "Sold" : "Bought"} ${str(row.name, 40) || str(row.symbol, 12) || "coin"}` }),
         el("span", { class: "coin-meta", text: formatVilnius(row.at) }),
@@ -367,53 +370,84 @@ function fillRow(state, row, actions) {
   ]);
 }
 
-function deskView(state, actions, rise) {
+function homeView(state, actions, rise) {
   const snap = state.snapshot;
-  const metrics = state.metrics;
   const anim = takePulseAnim(state);
   const currency = state.settings.currency;
   const usdRate = solUsd(state);
-  const equity = formatPair(metrics?.equityUsd, usdRate, currency);
-  const pnl = formatPair(metrics?.pnlUsd, usdRate, currency, { sign: true });
-  const wallet = formatSolAmount(metrics?.walletSol);
-  const cap = capBlock(state);
-  const points = equityPoints(snap, currency, usdRate);
-  const canvas = el("canvas", { class: "equity", role: "img", "aria-label": "Equity curve" });
-  const node = el("section", { class: rise ? "rise" : "" }, [
+  const book = portfolioUsd(snap);
+  const pnl = pnlUsd(snap);
+  const sol = num(snap?.wallet?.sol);
+  const eurRate = num(state.solEur);
+  const equity = book == null ? null : formatPair(book, usdRate, currency);
+  const pnlPair = pnl == null ? null : formatPair(pnl, usdRate, currency, { sign: true });
+  const points = curvePoints(snap).map((point) => ({
+    t: point.t,
+    v: currency === "SOL" && usdRate ? point.v / usdRate : point.v,
+  }));
+  const profit = pnlPoints(snap, curvePoints(snap)).map((point) => ({
+    t: point.t,
+    v: currency === "SOL" && usdRate ? point.v / usdRate : point.v,
+  }));
+  const markers = tradeMarkers(state);
+  const bookCanvas = points.length ? el("canvas", { class: "equity book-line", "aria-label": "Portfolio value" }) : null;
+  const pnlCanvas = profit.length ? el("canvas", { class: "equity pnl-line", "aria-label": "Profit and loss" }) : null;
+  const walletBits = [];
+  if (sol != null) walletBits.push(el("span", {}, [`${formatSolAmount(sol)} SOL`]));
+  if (sol != null && eurRate) walletBits.push(el("span", {}, [formatEur(sol * eurRate)]));
+  const node = el("section", { class: `home ${rise ? "rise" : ""}` }, [
     sampleRibbon(snap),
-    el("div", { class: "meters" }, [
-      meter(wallet, "Wallet SOL", formatPair((metrics?.walletSol || 0) * (usdRate || 0), usdRate, "USD").primary, "m-wallet"),
-      meter(equity.primary, currency === "SOL" ? "Equity SOL" : "Equity", unitSecondary(equity.secondary, currency), "m-eq"),
-      meter(pnl.primary, `Today · ${formatPct(num(snap?.today?.pnl_pct))}`, unitSecondary(pnl.secondary, currency), "m-pnl", num(snap?.today?.pnl_usd)),
-    ]),
-    el("p", { class: "quiet", text: statusLine(snap) }),
-    cap,
-    el("div", { class: "chart-block" }, [
-      el("div", { class: "chart-head" }, [
-        el("h2", { text: "Equity" }),
-        el("span", { text: currency === "SOL" ? "SOL" : "USD" }),
-      ]),
-      points.length ? canvas : el("p", { class: "quiet", text: "No equity curve in this file yet." }),
-    ]),
-    el("p", { class: "marked", text: `Marked ${formatVilnius(snap?.generated_at)}` }),
+    pnlPair ? el("p", { class: `hero-pnl ${pnl < 0 ? "down" : "up"}`, "data-hero": "pnl", text: pnlPair.primary }) : null,
+    equity ? el("p", { class: "hero-book", "data-hero": "book" }, [
+      el("span", { text: equity.primary }),
+      el("small", { text: "Portfolio" }),
+    ]) : null,
+    walletBits.length ? el("p", { class: "wallet-line" }, walletBits) : null,
+    pnlCanvas ? el("div", { class: "chart-block" }, [
+      el("div", { class: "chart-head" }, [el("h2", { text: "P&L" })]),
+      pnlCanvas,
+    ]) : null,
+    bookCanvas ? el("div", { class: "chart-block" }, [
+      el("div", { class: "chart-head" }, [el("h2", { text: "Portfolio" })]),
+      bookCanvas,
+    ]) : null,
+    capBlock(state),
+    statusBits(snap) ? el("p", { class: "quiet", text: statusBits(snap) }) : null,
+    snap?.generated_at ? el("p", { class: "marked", text: `Marked ${formatVilnius(snap.generated_at)}` }) : null,
     state.stale ? el("p", { class: "quiet", text: "Showing the last file. The refresh did not land." }) : null,
     healthBlock(snap),
   ]);
   queueMicrotask(() => {
-    if (!canvas.isConnected || !points.length) return;
-    track(mountEquity(canvas, points, (value) => (
-      currency === "SOL" ? formatSolAmount(value) : formatCompactUsd(value)
-    )));
+    const formatY = (value) => (currency === "SOL" ? formatSolAmount(value) : formatCompactUsd(value));
+    const chartStyle = state.settings.chartStyle === "line" ? "line" : "area";
+    if (bookCanvas?.isConnected) track(mountMarkedLine(bookCanvas, points, markers, { formatY, style: chartStyle }));
+    if (pnlCanvas?.isConnected) track(mountMarkedLine(pnlCanvas, profit, [], { formatY, style: chartStyle }));
     if (anim && effectsAllowed(state.settings)) {
-      const eq = node.querySelector('[data-meter="m-eq"] b');
-      const pn = node.querySelector('[data-meter="m-pnl"] b');
-      const wa = node.querySelector('[data-meter="m-wallet"] b');
-      if (eq) countUp(eq, anim.from.equityUsd, anim.to.equityUsd, (value) => formatPair(value, usdRate, currency).primary);
-      if (pn) countUp(pn, anim.from.pnlUsd, anim.to.pnlUsd, (value) => formatPair(value, usdRate, currency, { sign: true }).primary);
-      if (wa) countUp(wa, anim.from.walletSol, anim.to.walletSol, (value) => formatSolAmount(value));
+      const pn = node.querySelector('[data-hero="pnl"]');
+      const bk = node.querySelector('[data-hero="book"] span');
+      if (pn && anim.from.pnlUsd != null && anim.to.pnlUsd != null) {
+        countUp(pn, anim.from.pnlUsd, anim.to.pnlUsd, (value) => formatPair(value, usdRate, currency, { sign: true }).primary);
+      }
+      if (bk && anim.from.equityUsd != null && anim.to.equityUsd != null) {
+        countUp(bk, anim.from.equityUsd, anim.to.equityUsd, (value) => formatPair(value, usdRate, currency).primary);
+      }
     }
   });
   return node;
+}
+
+function tradeMarkers(state) {
+  const rows = Array.isArray(state.snapshot?.activity) ? state.snapshot.activity : [];
+  return rows.map((row) => {
+    const side = oneOf(row?.side, ["buy", "sell"]);
+    if (!side || !row?.at) return null;
+    const sources = iconSources(iconField(row), state.link?.base || "", safeImageUrl);
+    return { t: row.at, side, src: sources[0] || "" };
+  }).filter(Boolean);
+}
+
+function deskView(state, actions, rise) {
+  return homeView(state, actions, rise);
 }
 
 function takePulseAnim(state) {
@@ -451,20 +485,26 @@ function meter(primary, label, secondary, id, pnl) {
   ]);
 }
 
-function statusLine(snap) {
-  const run = oneOf(snap?.desk?.run_state, ["live", "paused", "halted"]) || "live";
-  const mode = oneOf(snap?.desk?.mode, ["live", "paper"]) === "live" ? "Live account" : "Paper account";
+function statusBits(snap) {
+  const bits = [];
+  const mode = oneOf(snap?.desk?.mode, ["live", "paper"]);
+  if (mode) bits.push(mode === "live" ? "Live account" : "Paper");
+  const run = oneOf(snap?.desk?.run_state, ["live", "paused", "halted"]);
+  if (run) bits.push(runLabel(run));
   const health = oneOf(snap?.health?.status, ["ok", "degraded", "down"]);
-  const healthText = health === "down" ? "Bots down" : health === "degraded" ? "Bots degraded" : health === "ok" ? "Bots healthy" : "No health report";
+  if (health === "ok") bits.push("Bots healthy");
+  if (health === "degraded") bits.push("Bots degraded");
+  if (health === "down") bits.push("Bots down");
   const compound = num(snap?.desk?.compounder_pct);
-  const extra = compound == null ? "" : ` · Compounder ${compound}%`;
-  return `${mode} · ${runLabel(run)} · ${healthText}${extra}`;
+  if (compound != null) bits.push(`Compounder ${compound}%`);
+  return bits.join(" · ");
 }
 
 function capBlock(state) {
   const today = state.snapshot?.today || {};
   const cap = num(today.cap_usd);
   const used = num(today.cap_used_usd);
+  if (cap == null && used == null) return null;
   let status = oneOf(today.cap_status, ["ok", "warning", "hit"]);
   if (!status && cap && used != null) status = used >= cap ? "hit" : used / cap >= 0.8 ? "warning" : "ok";
   const label = status === "hit" ? "Daily cap hit" : status === "warning" ? "Close to the daily cap" : "Within the daily cap";
@@ -491,6 +531,7 @@ function equityPoints(snap, currency, usdRate) {
 
 function healthBlock(snap) {
   const bots = Array.isArray(snap?.health?.bots) ? snap.health.bots : [];
+  if (!bots.length && !str(snap?.health?.summary, 180)) return null;
   return el("section", { class: "health" }, [
     el("h2", { class: "section-label", text: "Health" }),
     str(snap?.health?.summary, 180) ? el("p", { text: str(snap.health.summary, 180) }) : null,
@@ -522,7 +563,7 @@ function coinView(state, actions, rise) {
   const tf = state.timeframe || state.settings.timeframe;
   return el("article", { class: `detail ${rise ? "rise" : ""} ${flashClass(state, mint)}` }, [
     el("header", { class: "hero" }, [
-      coinIcon(coin?.icon || row.icon, symbol, name, state.link.base, true),
+      coinIcon(iconField(coin) || iconField(row), symbol, name, state.link.base, true),
       el("div", {}, [
         el("h2", { text: name }),
         el("p", { class: "coin-meta", text: [symbol, formatAge(coin?.created_at || row.created_at)].filter((bit) => bit && bit !== "—").join(" · ") }),
@@ -632,15 +673,17 @@ function hydrateChart(region, state, actions, coin, tf) {
   const formatPriceFn = (value) => priceText(state, value);
   const formatTime = (unix) => formatVilniusClock(unix);
   formatTime.full = (unix) => formatVilnius(new Date(unix * 1000).toISOString());
-  if (local.length) {
-    paintChart(region, local, normalizeTrades(coin.trades), {
-      formatPrice: formatPriceFn,
-      formatTime,
-      timeframe: tf,
-      source: "Candles from the desk file",
-    });
-    return;
-  }
+    const levels = levelsFor(state, coin);
+    if (local.length) {
+      paintChart(region, local, normalizeTrades(coin.trades), {
+        formatPrice: formatPriceFn,
+        formatTime,
+        timeframe: tf,
+        source: "Candles from the desk file",
+        levels,
+      });
+      return;
+    }
   region.replaceChildren(el("p", { class: "chart-status", text: "Loading the public chart…" }));
   actions.getCandles(coin.mint, tf, coin).then((result) => {
     if (!region.isConnected) return;
@@ -650,6 +693,7 @@ function hydrateChart(region, state, actions, coin, tf) {
         formatTime,
         timeframe: tf,
         source: "Public chart via GeckoTerminal",
+        levels: levelsFor(state, coin),
       });
       const last = result.candles[result.candles.length - 1];
       region.append(el("p", { class: "quiet", text: `Last public print ${formatPriceFn(last.c)}` }));
@@ -673,6 +717,11 @@ function hydrateChart(region, state, actions, coin, tf) {
   });
 }
 
+function levelsFor(state, coin) {
+  const position = (state.snapshot?.positions || []).find((row) => row?.mint === coin?.mint) || {};
+  return tradeLevels(entryPrice(coin, position), { ...coin, ...position });
+}
+
 function paintChart(region, candles, trades, opts) {
   const canvas = el("canvas", { class: "candles", "aria-label": "Candlestick chart" });
   const tip = el("div", { class: "tip", hidden: true });
@@ -682,6 +731,7 @@ function paintChart(region, candles, trades, opts) {
     el("p", { class: "legend" }, [
       el("span", { class: "buy", text: "Buy" }),
       el("span", { class: "sell", text: "Sell" }),
+      ...(opts.levels || []).map((level) => el("span", { text: level.label })),
       el("span", { text: "Drag to pan · pinch to zoom" }),
     ]),
   );
@@ -749,6 +799,7 @@ function lookView(state, actions, rise) {
     ])),
     group("Layout", seg([["comfy", "Comfy"], ["compact", "Compact"]], settings.density, (id) => actions.updateSettings({ density: id }))),
     group("Default chart", seg(TIMEFRAMES.map((id) => [id, id]), settings.timeframe, (id) => actions.updateSettings({ timeframe: id }))),
+    group("Chart style", seg(CHART_STYLES.map((item) => [item.id, item.name]), settings.chartStyle, (id) => actions.updateSettings({ chartStyle: id }))),
     group("Numbers", seg([["USD", "USD"], ["SOL", "SOL"]], settings.currency, (id) => actions.updateSettings({ currency: id }))),
     group("This device", el("div", {}, [
       el("p", { class: "quiet", text: host ? `Saved link · ${host}` : "No link saved." }),
@@ -813,7 +864,7 @@ function mainView(state, actions) {
     state.glowIds = new Set();
     return node;
   }
-  if (state.tab === "desk") return deskView(state, actions, rise);
+  if (state.tab === "home" || state.tab === "desk") return homeView(state, actions, rise);
   const node = scanView(state, actions, rise);
   state.flashes = new Map();
   return node;

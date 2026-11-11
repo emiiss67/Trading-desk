@@ -7,6 +7,7 @@ import { clampWindow, candlesFromCoin, normalizeCandles } from "../js/series.js"
 import { parseOhlcv, pickPool } from "../js/gecko.js";
 import { safeImageUrl } from "../js/api.js";
 import { isMint } from "../js/text.js";
+import { iconSources, ipfsCid, pnlPoints, tradeLevels } from "../js/fields.js";
 
 describe("private link", () => {
   it("round-trips a data base and keeps it out of the query", () => {
@@ -49,6 +50,31 @@ describe("private link", () => {
     assert.equal(parseLinkHash(`#d=${encodeBase64Url("javascript:alert(1)")}&k=sample-desk-key-1`).ok, false);
     assert.equal(parseLinkHash(`#d=${encodeBase64Url("http://example.com/sample")}&k=sample-desk-key-1`).ok, false);
     assert.equal(parseLinkHash(`#d=${encodeBase64Url("http://127.0.0.1:4173/sample")}&k=sample-desk-key-1`).ok, true);
+  });
+});
+
+describe("desk fields", () => {
+  it("rewrites ipfs and pump.fun image urls through public gateways", () => {
+    const cid = "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG";
+    assert.equal(ipfsCid(`ipfs://${cid}`), cid);
+    assert.equal(ipfsCid(`https://pump.fun/ipfs/${cid}`), cid);
+    const sources = iconSources(`ipfs://${cid}/image.png`, "https://example.com/sample/", safeImageUrl);
+    assert.equal(sources[0], `https://ipfs.io/ipfs/${cid}`);
+    assert.ok(sources.some((url) => url.includes("dweb.link")));
+    assert.ok(sources.some((url) => url.includes("cloudflare-ipfs.com")));
+    assert.ok(sources.some((url) => url.includes("cf-ipfs.com")));
+  });
+
+  it("derives stop, target, and pnl history from fields the file already has", () => {
+    const levels = tradeLevels(0.00002, {});
+    assert.equal(levels.find((level) => level.id === "stop").price, 0.000012);
+    assert.equal(levels.find((level) => level.id === "tp").price, 0.00004);
+    assert.equal(levels.some((level) => level.id === "trail"), false);
+    const withTrail = tradeLevels(0.00002, { trailing_stop_usd: 0.00003, stop_usd: 0.000011 });
+    assert.equal(withTrail.find((level) => level.id === "stop").price, 0.000011);
+    assert.equal(withTrail.find((level) => level.id === "trail").price, 0.00003);
+    const pnl = pnlPoints({ equity: { start_usd: 100 }, equity_curve: [{ t: "2026-11-10T00:00:00Z", equity_usd: 140 }] }, [{ t: "2026-11-10T00:00:00Z", v: 140 }]);
+    assert.equal(pnl[0].v, 40);
   });
 });
 

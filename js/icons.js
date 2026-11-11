@@ -1,6 +1,7 @@
 import { el } from "./dom.js";
 import { safeImageUrl } from "./api.js";
 import { str } from "./text.js";
+import { iconSources } from "./fields.js";
 
 const NS = "http://www.w3.org/2000/svg";
 
@@ -51,17 +52,26 @@ export function coinIcon(url, symbol, name, base, eager = false) {
   face.style.setProperty("--a", a);
   face.style.setProperty("--b", b);
   wrap.append(face);
-  const safe = safeImageUrl(url, base);
-  if (safe) {
+  const sources = iconSources(url, base, safeImageUrl);
+  if (sources.length) {
     const img = el("img", {
       alt: "",
       loading: eager ? "eager" : "lazy",
       decoding: "async",
       referrerpolicy: "no-referrer",
     });
+    let index = 0;
+    const tryNext = () => {
+      if (index >= sources.length) {
+        img.remove();
+        return;
+      }
+      img.src = sources[index];
+      index += 1;
+    };
     img.addEventListener("load", () => img.classList.add("is-loaded"));
-    img.addEventListener("error", () => img.remove());
-    img.src = safe;
+    img.addEventListener("error", tryNext);
+    tryNext();
     wrap.append(img);
   }
   return wrap;
