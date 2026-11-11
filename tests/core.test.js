@@ -8,6 +8,7 @@ import { parseOhlcv, pickPool } from "../js/gecko.js";
 import { safeImageUrl } from "../js/api.js";
 import { isMint } from "../js/text.js";
 import { iconSources, ipfsCid, pnlPoints, tradeLevels } from "../js/fields.js";
+import { sanitizeSettings } from "../js/settings.js";
 
 describe("private link", () => {
   it("round-trips a data base and keeps it out of the query", () => {
@@ -75,6 +76,12 @@ describe("desk fields", () => {
     assert.equal(withTrail.find((level) => level.id === "trail").price, 0.00003);
     const pnl = pnlPoints({ equity: { start_usd: 100 }, equity_curve: [{ t: "2026-11-10T00:00:00Z", equity_usd: 140 }] }, [{ t: "2026-11-10T00:00:00Z", v: 140 }]);
     assert.equal(pnl[0].v, 40);
+    const look = sanitizeSettings({ particleDensity: "high", chartStyle: "candles", fontSize: "lg", particleStyle: "grid" });
+    assert.equal(look.particleDensity, 84);
+    assert.equal(look.chartStyle, "candles");
+    assert.equal(look.fontSize, "lg");
+    assert.equal(look.particleStyle, "grid");
+    assert.equal(sanitizeSettings({ particleDensity: 12 }).particleDensity, 12);
   });
 });
 

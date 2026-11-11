@@ -93,6 +93,12 @@ html[data-density="compact"] {
   --icon: 40px;
   --row-y: 9px;
 }
+html[data-font="sm"] body { font-size: 15px; }
+html[data-font="lg"] body { font-size: 18px; }
+html[data-font="sm"] .hero-pnl { font-size: 46px; }
+html[data-font="lg"] .hero-pnl { font-size: 68px; }
+html[data-font="sm"] .title { font-size: 28px; }
+html[data-font="lg"] .title { font-size: 40px; }
 
 * { box-sizing: border-box; }
 html {
@@ -507,6 +513,14 @@ main {
 .chart-head, .legend { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
 .equity, .candles { width: 100%; display: block; touch-action: none; }
 .equity { height: 168px; }
+html[data-effects="on"] .pnl-glow { animation: pnlGlow 900ms ease; }
+@keyframes pnlGlow {
+  0% { text-shadow: 0 0 0 transparent; }
+  35% { text-shadow: 0 0 22px var(--accent); }
+  100% { text-shadow: 0 0 0 transparent; }
+}
+.density-row { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 13px; }
+.density { flex: 1; accent-color: var(--accent); }
 .hero-pnl {
   margin: 8px 16px 0;
   font-family: var(--serif);
@@ -739,7 +753,8 @@ main {
 .toast.show { opacity: 1; transform: translateX(-50%); }
 .burst { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 6; }
 
-.haptic:active { transform: scale(0.985); }
+.haptic { transition: transform 120ms ease, filter 120ms ease; }
+.haptic:active { transform: scale(0.96); filter: brightness(1.18); }
 .coin-row, .chip, .book-head, .fill-main { transition: background 180ms ease, transform 160ms ease; }
 html[data-effects="on"] .rise { animation: rise 340ms cubic-bezier(0.2, 0.8, 0.2, 1); }
 html[data-effects="on"] .flash-up { animation: flashUp 800ms ease; }
@@ -762,6 +777,6 @@ html[data-effects="on"] .coin-icon img { transition: opacity 180ms linear; }
   html[data-effects="on"] .flash-down,
   html[data-effects="on"] .is-new-buy .coin-icon,
   html[data-effects="on"] .sk,
-  .haptic:active { animation: none; transform: none; }
+  .haptic:active, .pnl-glow { animation: none; transform: none; filter: none; }
   .coin-row, .chip, .dock button, .pull::before { transition: none; }
 }
