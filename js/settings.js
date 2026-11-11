@@ -1,12 +1,10 @@
 export const THEMES = [
-  { id: "midnight", name: "Midnight", swatch: "#14140f", ink: "#f4f1e8", accent: "#d6f56a" },
-  { id: "oled", name: "OLED black", swatch: "#000000", ink: "#f7f7f7", accent: "#f2f2f2" },
-  { id: "neon", name: "Neon green", swatch: "#04140c", ink: "#e9ffe8", accent: "#39ff88" },
-  { id: "haze", name: "Purple haze", swatch: "#140c18", ink: "#f6eefe", accent: "#e2b6ff" },
-  { id: "light", name: "Light", swatch: "#f6f3ec", ink: "#1c1a16", accent: "#3d6b12" },
+  { id: "system", name: "System", swatch: "#8e8e93", ink: "#fff", accent: "#0A84FF" },
+  { id: "light", name: "Light", swatch: "#f2f2f7", ink: "#000", accent: "#007AFF" },
+  { id: "dark", name: "Dark", swatch: "#000000", ink: "#fff", accent: "#0A84FF" },
 ];
 
-export const ACCENTS = ["#d6f56a", "#7ee0c6", "#39ff88", "#8eb6ff", "#e2b6ff", "#ffb086"];
+export const ACCENTS = ["#0A84FF", "#30D158", "#FF9F0A", "#BF5AF2", "#FF375F"];
 export const PARTICLE_STYLES = [
   { id: "stars", name: "Stars" },
   { id: "embers", name: "Embers" },
@@ -28,11 +26,11 @@ export const FONT_SIZES = [
 const KEY = "desk.settings.v1";
 
 export const DEFAULTS = {
-  theme: "midnight",
+  theme: "system",
   accent: null,
-  particles: true,
+  particles: false,
   particleStyle: "stars",
-  particleDensity: 48,
+  particleDensity: 22,
   effects: true,
   density: "comfy",
   timeframe: "5m",
@@ -72,7 +70,7 @@ export function sanitizeSettings(raw) {
   if (!raw || typeof raw !== "object") return next;
   if (THEMES.some((theme) => theme.id === raw.theme)) next.theme = raw.theme;
   next.accent = normalizeHex(raw.accent);
-  next.particles = raw.particles !== false;
+  next.particles = raw.particles === true;
   if (PARTICLE_STYLES.some((style) => style.id === raw.particleStyle)) next.particleStyle = raw.particleStyle;
   next.particleDensity = densityNumber(raw.particleDensity);
   next.effects = raw.effects !== false;
@@ -127,11 +125,22 @@ export function applySettings(settings) {
     root.style.removeProperty("--accent-ink");
     root.style.removeProperty("--particle-rgb");
   }
-  root.style.colorScheme = settings.theme === "light" ? "light" : "dark";
+  const light = isLightTheme(settings);
+  root.style.colorScheme = light ? "light" : "dark";
   const themeColor = getComputedStyle(root).getPropertyValue("--theme-color").trim();
-  document.getElementById("theme-color")?.setAttribute("content", themeColor || "#14140f");
+  document.getElementById("theme-color")?.setAttribute("content", themeColor || (light ? "#f2f2f7" : "#000000"));
   document.getElementById("apple-status")?.setAttribute(
     "content",
-    settings.theme === "light" ? "default" : "black-translucent",
+    light ? "default" : "black-translucent",
   );
+}
+
+export function isLightTheme(settings) {
+  if (settings?.theme === "light") return true;
+  if (settings?.theme === "dark") return false;
+  try {
+    return !window.matchMedia("(prefers-color-scheme: dark)").matches;
+  } catch {
+    return false;
+  }
 }

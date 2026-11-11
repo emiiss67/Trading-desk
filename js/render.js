@@ -166,7 +166,10 @@ function paintDock(state, actions) {
       "aria-label": name,
       "aria-current": !state.overlay && state.tab === id ? "page" : "false",
       onclick: () => actions.setTab(id),
-    }, [label])),
+    }, [
+      icon(id === "home" ? "home" : id === "scan" ? "coins" : id === "positions" ? "book" : "tape"),
+      el("span", { text: label }),
+    ])),
   );
 }
 
@@ -779,7 +782,7 @@ function lookView(state, actions, rise) {
         return button;
       }),
       (() => {
-        const input = el("input", { class: "color", type: "color", "aria-label": "Custom accent", value: settings.accent || "#d6f56a" });
+        const input = el("input", { class: "color", type: "color", "aria-label": "Custom accent", value: settings.accent || "#0A84FF" });
         input.addEventListener("input", () => actions.updateSettings({ accent: input.value }));
         return input;
       })(),

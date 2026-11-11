@@ -513,6 +513,10 @@ function boot() {
   window.matchMedia("(prefers-reduced-motion: reduce)").addEventListener?.("change", () => {
     particles.sync(particleState());
   });
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => {
+    applySettings(state.settings);
+    render({ keepScroll: true });
+  });
   document.addEventListener("click", (event) => {
     if (!event.target.closest?.(".haptic")) return;
     if (!state.settings.effects || !navigator.vibrate) return;

@@ -24,6 +24,10 @@ export function icon(name) {
     back: ["M14.5 6.5 L8.5 12 L14.5 17.5"],
     refresh: ["M19.5 12 A7.5 7.5 0 1 1 17 6.2", "M19.5 4.5 V8.5 H15.5"],
     look: ["M4 7 H20", "M7 12 H17", "M10 17 H14"],
+    home: ["M4 11 L12 4 L20 11", "M7 10 V20 H17 V10"],
+    coins: ["M12 4 A8 8 0 1 0 12.01 4", "M12 8 V16", "M9 11 H15"],
+    book: ["M5 5 H11 A3 3 0 0 1 14 8 V19 H8 A3 3 0 0 0 5 16 Z", "M14 8 A3 3 0 0 1 17 5 H19 V19 H14"],
+    tape: ["M5 7 H19", "M5 12 H19", "M5 17 H13"],
   };
   for (const d of paths[name] || []) svg.append(path(d));
   return svg;
