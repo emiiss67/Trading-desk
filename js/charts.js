@@ -370,7 +370,11 @@ export function mountCandles(canvas, candles, trades, { formatPrice, formatTime,
 export function mountMarkedLine(canvas, points, markers, { formatY, style = "area" } = {}) {
   const images = new Map();
   let frame = 0;
+  let alive = true;
+  const born = performance.now();
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const draw = () => {
+    if (!alive) return;
     const { ctx, w, h } = fit(canvas);
     ctx.clearRect(0, 0, w, h);
     if (w < 20 || h < 20 || !points.length) return;
@@ -443,9 +447,30 @@ export function mountMarkedLine(canvas, points, markers, { formatY, style = "are
         else ctx.lineTo(x, y);
       });
     }
+    const reveal = reduce ? 1 : Math.min(1, (performance.now() - born) / 700);
+    if (style === "candles") {
+      const body = Math.max(3, plotW / Math.max(points.length, 1) * 0.55);
+      for (let i = 1; i < points.length; i += 1) {
+        if (i / (points.length - 1) > reveal) break;
+        const up = points[i].v >= points[i - 1].v;
+        const y0 = yOf(points[i - 1].v);
+        const y1 = yOf(points[i].v);
+        ctx.fillStyle = up ? col.accent : col.bad;
+        ctx.globalAlpha = 0.85;
+        ctx.fillRect(xOf(i) - body / 2, Math.min(y0, y1), body, Math.max(1.5, Math.abs(y1 - y0)));
+        ctx.globalAlpha = 1;
+      }
+    } else {
     ctx.strokeStyle = col.accent;
     ctx.lineWidth = 2;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(pad.l, 0, plotW * reveal, h);
+    ctx.clip();
     ctx.stroke();
+    ctx.restore();
+    }
+    const pulse = reduce ? 1 : 1 + Math.sin(performance.now() / 280) * 0.16;
     for (const marker of markers) {
       const x = xOfTime(marker.t);
       if (x == null) continue;
@@ -455,7 +480,7 @@ export function mountMarkedLine(canvas, points, markers, { formatY, style = "are
       const y = yOf(nearest.v);
       ctx.fillStyle = marker.side === "sell" ? col.bad : col.accent;
       ctx.beginPath();
-      ctx.arc(x, y, 8, 0, Math.PI * 2);
+      ctx.arc(x, y, 8 * pulse, 0, Math.PI * 2);
       ctx.fill();
       const img = marker.src ? images.get(marker.src) : null;
       if (img && img.complete && img.naturalWidth) {
@@ -469,8 +494,10 @@ export function mountMarkedLine(canvas, points, markers, { formatY, style = "are
       ctx.fillStyle = col.ink;
       ctx.font = "9px ui-monospace, SFMono-Regular, Menlo, monospace";
       ctx.textAlign = "center";
-      ctx.fillText(marker.side === "sell" ? "SELL" : "BUY", x, y - 12);
+      ctx.fillText(marker.side === "sell" ? "SELL" : "BUY", x, y - 14);
     }
+    if (!reduce && reveal < 1) frame = requestAnimationFrame(draw);
+    else if (!reduce && markers.length) frame = requestAnimationFrame(draw);
   };
   for (const marker of markers) {
     if (!marker.src || images.has(marker.src)) continue;
@@ -485,5 +512,5 @@ export function mountMarkedLine(canvas, points, markers, { formatY, style = "are
   });
   observer.observe(canvas);
   draw();
-  return { destroy() { observer.disconnect(); cancelAnimationFrame(frame); } };
+  return { destroy() { alive = false; observer.disconnect(); cancelAnimationFrame(frame); } };
 }

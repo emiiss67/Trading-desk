@@ -89,7 +89,7 @@ function viewKey(state) {
 }
 
 function headerTitle(state) {
-  if (state.overlay?.type === "look") return "Appearance";
+  if (state.overlay?.type === "look") return "Customize";
   if (state.overlay?.type === "coin") {
     const row = rowByMint(state, state.overlay.mint);
     const cached = state.coinCache.get(state.overlay.mint);
@@ -397,7 +397,7 @@ function homeView(state, actions, rise) {
   if (sol != null && eurRate) walletBits.push(el("span", {}, [formatEur(sol * eurRate)]));
   const node = el("section", { class: `home ${rise ? "rise" : ""}` }, [
     sampleRibbon(snap),
-    pnlPair ? el("p", { class: `hero-pnl ${pnl < 0 ? "down" : "up"}`, "data-hero": "pnl", text: pnlPair.primary }) : null,
+    pnlPair ? el("p", { class: `hero-pnl ${pnl < 0 ? "down" : "up"}${anim ? " pnl-glow" : ""}`, "data-hero": "pnl", text: pnlPair.primary }) : null,
     equity ? el("p", { class: "hero-book", "data-hero": "book" }, [
       el("span", { text: equity.primary }),
       el("small", { text: "Portfolio" }),
@@ -419,7 +419,7 @@ function homeView(state, actions, rise) {
   ]);
   queueMicrotask(() => {
     const formatY = (value) => (currency === "SOL" ? formatSolAmount(value) : formatCompactUsd(value));
-    const chartStyle = state.settings.chartStyle === "line" ? "line" : "area";
+    const chartStyle = state.settings.chartStyle === "line" || state.settings.chartStyle === "candles" ? state.settings.chartStyle : "area";
     if (bookCanvas?.isConnected) track(mountMarkedLine(bookCanvas, points, markers, { formatY, style: chartStyle }));
     if (pnlCanvas?.isConnected) track(mountMarkedLine(pnlCanvas, profit, [], { formatY, style: chartStyle }));
     if (anim && effectsAllowed(state.settings)) {
@@ -788,7 +788,7 @@ function lookView(state, actions, rise) {
       reduced() ? el("p", { class: "quiet", text: "This phone asked for reduced motion, so particles stay paused." }) : null,
       toggle("Particles", settings.particles, (on) => actions.updateSettings({ particles: on })),
       seg(PARTICLE_STYLES.map((style) => [style.id, style.name]), settings.particleStyle, (id) => actions.updateSettings({ particleStyle: id })),
-      seg([["low", "Sparse"], ["medium", "Even"], ["high", "Dense"]], settings.particleDensity, (id) => actions.updateSettings({ particleDensity: id })),
+      densitySlider(settings, actions),
     ])),
     group("Motion", el("div", { class: "stack-tight" }, [
       toggle("Effects", settings.effects, (on) => actions.updateSettings({ effects: on })),
@@ -798,6 +798,7 @@ function lookView(state, actions, rise) {
       ]),
     ])),
     group("Layout", seg([["comfy", "Comfy"], ["compact", "Compact"]], settings.density, (id) => actions.updateSettings({ density: id }))),
+    group("Type size", seg([["sm", "Small"], ["md", "Medium"], ["lg", "Large"]], settings.fontSize || "md", (id) => actions.updateSettings({ fontSize: id }))),
     group("Default chart", seg(TIMEFRAMES.map((id) => [id, id]), settings.timeframe, (id) => actions.updateSettings({ timeframe: id }))),
     group("Chart style", seg(CHART_STYLES.map((item) => [item.id, item.name]), settings.chartStyle, (id) => actions.updateSettings({ chartStyle: id }))),
     group("Numbers", seg([["USD", "USD"], ["SOL", "SOL"]], settings.currency, (id) => actions.updateSettings({ currency: id }))),
@@ -818,6 +819,23 @@ function lookView(state, actions, rise) {
         text: "Reset appearance",
       }),
     ])),
+  ]);
+}
+
+function densitySlider(settings, actions) {
+  const value = Number.isFinite(Number(settings.particleDensity)) ? Number(settings.particleDensity) : 48;
+  const input = el("input", {
+    class: "density",
+    type: "range",
+    min: "0",
+    max: "100",
+    value: String(value),
+    "aria-label": "Particle density",
+  });
+  input.addEventListener("input", () => actions.updateSettings({ particleDensity: Number(input.value) }));
+  return el("label", { class: "density-row" }, [
+    el("span", { text: "Density" }),
+    input,
   ]);
 }
 

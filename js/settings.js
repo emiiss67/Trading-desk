@@ -8,16 +8,21 @@ export const THEMES = [
 
 export const ACCENTS = ["#d6f56a", "#7ee0c6", "#39ff88", "#8eb6ff", "#e2b6ff", "#ffb086"];
 export const PARTICLE_STYLES = [
-  { id: "motes", name: "Motes" },
+  { id: "stars", name: "Stars" },
   { id: "embers", name: "Embers" },
-  { id: "orbits", name: "Orbits" },
-  { id: "threads", name: "Threads" },
-  { id: "spark", name: "Spark" },
+  { id: "bubbles", name: "Bubbles" },
+  { id: "grid", name: "Grid glow" },
 ];
 export const TIMEFRAMES = ["1m", "5m", "15m", "1h"];
 export const CHART_STYLES = [
   { id: "area", name: "Area" },
   { id: "line", name: "Line" },
+  { id: "candles", name: "Candles" },
+];
+export const FONT_SIZES = [
+  { id: "sm", name: "Small" },
+  { id: "md", name: "Medium" },
+  { id: "lg", name: "Large" },
 ];
 
 const KEY = "desk.settings.v1";
@@ -26,13 +31,14 @@ export const DEFAULTS = {
   theme: "midnight",
   accent: null,
   particles: true,
-  particleStyle: "motes",
-  particleDensity: "low",
+  particleStyle: "stars",
+  particleDensity: 48,
   effects: true,
   density: "comfy",
   timeframe: "5m",
   currency: "USD",
   chartStyle: "area",
+  fontSize: "md",
 };
 
 export function normalizeHex(value) {
@@ -68,15 +74,23 @@ export function sanitizeSettings(raw) {
   next.accent = normalizeHex(raw.accent);
   next.particles = raw.particles !== false;
   if (PARTICLE_STYLES.some((style) => style.id === raw.particleStyle)) next.particleStyle = raw.particleStyle;
-  if (raw.particleDensity === "medium" || raw.particleDensity === "high" || raw.particleDensity === "low") {
-    next.particleDensity = raw.particleDensity;
-  }
+  next.particleDensity = densityNumber(raw.particleDensity);
   next.effects = raw.effects !== false;
   next.density = raw.density === "compact" ? "compact" : "comfy";
   if (TIMEFRAMES.includes(raw.timeframe)) next.timeframe = raw.timeframe;
   next.currency = raw.currency === "SOL" ? "SOL" : "USD";
-  next.chartStyle = raw.chartStyle === "line" ? "line" : "area";
+  if (raw.chartStyle === "line" || raw.chartStyle === "candles" || raw.chartStyle === "area") next.chartStyle = raw.chartStyle;
+  if (raw.fontSize === "sm" || raw.fontSize === "lg" || raw.fontSize === "md") next.fontSize = raw.fontSize;
   return next;
+}
+
+export function densityNumber(value) {
+  if (value === "low") return 28;
+  if (value === "medium") return 55;
+  if (value === "high") return 84;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return DEFAULTS.particleDensity;
+  return Math.max(0, Math.min(100, Math.round(n)));
 }
 
 export function loadSettings() {
@@ -102,6 +116,7 @@ export function applySettings(settings) {
   root.dataset.theme = settings.theme;
   root.dataset.density = settings.density;
   root.dataset.effects = settings.effects ? "on" : "off";
+  root.dataset.font = settings.fontSize || "md";
   const accent = normalizeHex(settings.accent);
   if (accent) {
     root.style.setProperty("--accent", accent);

@@ -1,4 +1,8 @@
-const COUNTS = { low: 42, medium: 72, high: 104 };
+import { densityNumber } from "./settings.js";
+
+function particleCount(density) {
+  return Math.max(0, Math.min(120, Math.round(8 + (densityNumber(density) / 100) * 112)));
+}
 
 export function startParticles(canvas) {
   const ctx = canvas.getContext("2d", { alpha: true });
@@ -44,13 +48,30 @@ export function startParticles(canvas) {
 
   function rebuild(nextStyle, density) {
     style = nextStyle;
-    const count = COUNTS[density] || COUNTS.low;
+    const count = particleCount(density);
     parts = Array.from({ length: count }, (_, i) => make(i, count, true));
   }
 
   function draw() {
     ctx.clearRect(0, 0, width, height);
     const [r, g, b] = rgb();
+    if (style === "grid") {
+      ctx.strokeStyle = `rgba(${r},${g},${b},0.16)`;
+      ctx.lineWidth = 1;
+      const gap = 56;
+      for (let x = 0; x <= width; x += gap) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+      for (let y = 0; y <= height; y += gap) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+    }
     for (const p of parts) {
       if (style === "embers") {
         p.y -= p.s;
@@ -59,10 +80,13 @@ export function startParticles(canvas) {
           p.y = height + 8;
           p.x = Math.random() * width;
         }
-      } else if (style === "orbits") {
-        p.a += 0.004 + p.s * 0.004;
-        p.x = p.cx + Math.cos(p.a) * p.rad;
-        p.y = p.cy + Math.sin(p.a) * p.rad * 0.55;
+      } else if (style === "bubbles") {
+        p.y -= p.s * 0.7;
+        p.x += Math.sin(p.y * 0.01) * 0.15;
+        if (p.y < -12) {
+          p.y = height + 12;
+          p.x = Math.random() * width;
+        }
       } else {
         p.x += p.vx;
         p.y += p.vy;
@@ -78,6 +102,17 @@ export function startParticles(canvas) {
         ctx.beginPath();
         ctx.moveTo(p.x, p.y);
         ctx.lineTo(p.x + p.vx * 18, p.y + p.vy * 18);
+        ctx.stroke();
+      } else if (style === "stars") {
+        const flick = 0.25 + Math.abs(Math.sin(p.a)) * 0.75;
+        ctx.globalAlpha = p.alpha * flick;
+        ctx.fillRect(p.x, p.y, 1.4, p.r * 3);
+        ctx.fillRect(p.x - p.r, p.y + p.r, p.r * 3, 1.4);
+        ctx.globalAlpha = 1;
+        p.a += 0.03;
+      } else if (style === "bubbles") {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r * 2.4, 0, Math.PI * 2);
         ctx.stroke();
       } else if (style === "spark") {
         const flick = 0.35 + Math.abs(Math.sin(p.a + p.x * 0.02)) * 0.65;
@@ -107,7 +142,7 @@ export function startParticles(canvas) {
       ctx.clearRect(0, 0, width, height);
       return;
     }
-    const count = COUNTS[density] || COUNTS.low;
+    const count = particleCount(density);
     if (!running || nextStyle !== style || parts.length !== count) {
       resize();
       rebuild(nextStyle, density);
