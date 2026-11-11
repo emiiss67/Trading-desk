@@ -1,4 +1,4 @@
-const SHELL = "desk-shell-v4";
+const SHELL = "desk-shell-v5";
 const DATA = "desk-json-v1";
 const SHELL_FILES = [
   "./",
