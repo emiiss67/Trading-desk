@@ -9,6 +9,12 @@ export function looksTechnical(value) {
   return TECHNICAL.test(str(value, 240));
 }
 
+export function candlesPendingText(coin) {
+  const text = str(coin?.candles_pending_reason, 220);
+  if (!text || looksTechnical(text)) return "";
+  return text;
+}
+
 export function plainReason(row) {
   const plain = str(row?.reason_plain, 220);
   if (plain && !looksTechnical(plain)) return plain;
