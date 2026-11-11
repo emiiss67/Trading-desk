@@ -133,10 +133,28 @@ Links to pump.fun, Solscan, and DexScreener are built from the mint. URLs inside
 
 ## Phone UI
 
-- **Scan** is the home list: icon, name, symbol, age, decision, reason, search, and filters.
+- **Home** is the book: today’s P&L, portfolio value, a P&L line, and a portfolio line with a coin icon and BUY/SELL label on each fill. Wallet SOL is shown with an EUR value from `wallet.sol_eur`, or from CoinGecko when that field is missing.
+- **Coins** is the scan list: icon, name, symbol, age, decision, reason, search, and filters.
 - A coin opens the price, market stats, gates, contract copy, and a candlestick chart (1m / 5m / 15m / 1h) with volume and the desk’s buys and sells. Drag pans, pinch or wheel zooms, double-tap resets.
 - **Positions** and **Tape** are the open book and the fills.
-- **Desk** is wallet SOL, equity, today’s P&L, daily-cap status, run state, bot health, the equity line, and the mark time labeled `Europe/Vilnius`.
+- **Book** and **Tape** are the open positions and the fills. Daily cap, run state, and bot health stay on Home when the file includes them. Missing numbers are omitted.
+- Coin charts draw the entry, a stop ( `stop_usd`, otherwise entry × 0.6 ), a target ( `take_profit_usd`, otherwise 2× entry ), a trailing level when the file has one, and the buy/sell marks.
+- Icons accept `icon`, `image`, `image_url`, `icon_url`, or `logo`. `ipfs://` and `/ipfs/<cid>` URLs are loaded through ipfs.io, dweb.link, cloudflare-ipfs.com, then cf-ipfs.com, then a generated avatar.
+
+## Fields the exporter should add
+
+The sample snapshot already has `equity_curve`, `activity`, `wallet.sol`, and `wallet.sol_usd`. A live writer that only matches an older shape should add:
+
+| Field | Why |
+| --- | --- |
+| `wallet.sol_eur` | EUR value of the SOL balance. If absent, the phone asks CoinGecko. |
+| `equity_curve[].t` and `equity_curve[].equity_usd` | Portfolio line. `portfolio_history[].t` + `value_usd` is also read. |
+| `equity.start_usd` | Builds the P&L line as portfolio minus start when `pnl_curve` is absent. |
+| `pnl_curve[]` with `t` and `pnl_usd` | Optional explicit P&L history. Preferred over the derived line. |
+| `activity[].at`, `side`, `icon` or `image`, `symbol`, `mint` | Trade markers on the portfolio line. |
+| `positions[].trailing_usd` | Trailing line on the coin chart. Also accepted as `trailing_stop_usd`. |
+| `positions[].stop_usd` and `take_profit_usd` | Stop and target. If omitted, the chart uses entry × 0.6 and entry × 2. |
+| `icon` or `image` as `https` or `ipfs://` | Real coin art. Relative paths still resolve against the data base. |
 - Pull down, or use the refresh control. While the page is visible it refetches about every 15 seconds.
 - Appearance (local only): Midnight, OLED black, Neon green, Purple haze, Light; accent color; particle style, density, and on/off; effects; comfy or compact; default timeframe; USD or SOL. Particles pause when the tab is hidden and stay off when the OS asks for reduced motion.
 

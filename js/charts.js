@@ -137,7 +137,23 @@ function colorAlpha(color, alpha) {
   return color;
 }
 
-export function mountCandles(canvas, candles, trades, { formatPrice, formatTime, timeframe }) {
+function drawLevel(ctx, y, x0, x1, color, label) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(x0, y);
+  ctx.lineTo(x1, y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = color;
+  ctx.font = "10px ui-monospace, SFMono-Regular, Menlo, monospace";
+  ctx.textAlign = "left";
+  ctx.fillText(label, x0 + 4, y - 3);
+  ctx.restore();
+}
+
+export function mountCandles(canvas, candles, trades, { formatPrice, formatTime, timeframe, levels = [] }) {
   const initial = Math.min(48, candles.length);
   let view = clampWindow(candles.length, candles.length - initial, initial);
   const pointers = new Map();
@@ -169,6 +185,11 @@ export function mountCandles(canvas, candles, trades, { formatPrice, formatTime,
       hi = Math.max(hi, candle.h);
       lo = Math.min(lo, candle.l);
       vmax = Math.max(vmax, candle.v);
+    }
+    for (const level of levels) {
+      if (!Number.isFinite(level.price)) continue;
+      hi = Math.max(hi, level.price);
+      lo = Math.min(lo, level.price);
     }
     const span = hi - lo || Math.abs(hi) * 0.04 || 1;
     const yMax = hi + span * 0.08;
@@ -209,6 +230,11 @@ export function mountCandles(canvas, candles, trades, { formatPrice, formatTime,
       ctx.fillRect(x - bw / 2, h - pad.b - vh, bw, vh);
       ctx.globalAlpha = 1;
     });
+    const levelColor = { entry: col.muted, stop: col.bad, tp: col.accent, trail: col.ink };
+    for (const level of levels) {
+      if (!Number.isFinite(level.price)) continue;
+      drawLevel(ctx, yOf(level.price), pad.l, w - pad.r, levelColor[level.id] || col.muted, level.label);
+    }
     const limit = timeframeSeconds(timeframe);
     for (const trade of trades) {
       let best = -1;
@@ -339,4 +365,125 @@ export function mountCandles(canvas, candles, trades, { formatPrice, formatTime,
       canvas.removeEventListener("wheel", onWheel);
     },
   };
+}
+
+export function mountMarkedLine(canvas, points, markers, { formatY, style = "area" } = {}) {
+  const images = new Map();
+  let frame = 0;
+  const draw = () => {
+    const { ctx, w, h } = fit(canvas);
+    ctx.clearRect(0, 0, w, h);
+    if (w < 20 || h < 20 || !points.length) return;
+    const col = palette();
+    const pad = { l: 8, r: 54, t: 28, b: 16 };
+    const values = points.map((point) => point.v).filter(Number.isFinite);
+    if (!values.length) return;
+    let min = Math.min(...values);
+    let max = Math.max(...values);
+    if (min === max) {
+      min -= Math.abs(min) * 0.04 || 1;
+      max += Math.abs(max) * 0.04 || 1;
+    }
+    const span = max - min;
+    min -= span * 0.12;
+    max += span * 0.18;
+    const plotW = w - pad.l - pad.r;
+    const plotH = h - pad.t - pad.b;
+    const times = points.map((point) => Date.parse(point.t));
+    const xOf = (i) => pad.l + (points.length === 1 ? plotW / 2 : (plotW * i) / (points.length - 1));
+    const yOf = (v) => pad.t + ((max - v) / (max - min)) * plotH;
+    const xOfTime = (stamp) => {
+      const t = Date.parse(stamp);
+      if (!Number.isFinite(t) || !times.length) return null;
+      let best = 0;
+      let bestD = Infinity;
+      times.forEach((time, i) => {
+        const dist = Math.abs(time - t);
+        if (dist < bestD) {
+          bestD = dist;
+          best = i;
+        }
+      });
+      return xOf(best);
+    };
+    ctx.strokeStyle = col.line;
+    ctx.lineWidth = 1;
+    ctx.font = "11px ui-monospace, SFMono-Regular, Menlo, monospace";
+    ctx.fillStyle = col.muted;
+    for (const frac of [0, 1]) {
+      const value = max - (max - min) * frac;
+      const y = yOf(value);
+      ctx.beginPath();
+      ctx.moveTo(pad.l, y);
+      ctx.lineTo(w - pad.r, y);
+      ctx.stroke();
+      ctx.fillText(formatY(value), w - pad.r + 6, y + 4);
+    }
+    ctx.beginPath();
+    points.forEach((point, i) => {
+      const x = xOf(i);
+      const y = yOf(point.v);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    if (style !== "line") {
+      ctx.lineTo(xOf(points.length - 1), pad.t + plotH);
+      ctx.lineTo(xOf(0), pad.t + plotH);
+      ctx.closePath();
+      const grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + plotH);
+      grad.addColorStop(0, colorAlpha(col.accent, 0.32));
+      grad.addColorStop(1, colorAlpha(col.accent, 0));
+      ctx.fillStyle = grad;
+      ctx.fill();
+      ctx.beginPath();
+      points.forEach((point, i) => {
+        const x = xOf(i);
+        const y = yOf(point.v);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+    }
+    ctx.strokeStyle = col.accent;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    for (const marker of markers) {
+      const x = xOfTime(marker.t);
+      if (x == null) continue;
+      const nearest = points.reduce((best, point) => (
+        Math.abs(Date.parse(point.t) - Date.parse(marker.t)) < Math.abs(Date.parse(best.t) - Date.parse(marker.t)) ? point : best
+      ), points[0]);
+      const y = yOf(nearest.v);
+      ctx.fillStyle = marker.side === "sell" ? col.bad : col.accent;
+      ctx.beginPath();
+      ctx.arc(x, y, 8, 0, Math.PI * 2);
+      ctx.fill();
+      const img = marker.src ? images.get(marker.src) : null;
+      if (img && img.complete && img.naturalWidth) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(x, y, 6.5, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.drawImage(img, x - 6.5, y - 6.5, 13, 13);
+        ctx.restore();
+      }
+      ctx.fillStyle = col.ink;
+      ctx.font = "9px ui-monospace, SFMono-Regular, Menlo, monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(marker.side === "sell" ? "SELL" : "BUY", x, y - 12);
+    }
+  };
+  for (const marker of markers) {
+    if (!marker.src || images.has(marker.src)) continue;
+    const img = new Image();
+    img.onload = () => draw();
+    img.src = marker.src;
+    images.set(marker.src, img);
+  }
+  const observer = new ResizeObserver(() => {
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(draw);
+  });
+  observer.observe(canvas);
+  draw();
+  return { destroy() { observer.disconnect(); cancelAnimationFrame(frame); } };
 }

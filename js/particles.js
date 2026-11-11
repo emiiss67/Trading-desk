@@ -1,4 +1,4 @@
-const COUNTS = { low: 26, medium: 48, high: 72 };
+const COUNTS = { low: 42, medium: 72, high: 104 };
 
 export function startParticles(canvas) {
   const ctx = canvas.getContext("2d", { alpha: true });
@@ -79,6 +79,13 @@ export function startParticles(canvas) {
         ctx.moveTo(p.x, p.y);
         ctx.lineTo(p.x + p.vx * 18, p.y + p.vy * 18);
         ctx.stroke();
+      } else if (style === "spark") {
+        const flick = 0.35 + Math.abs(Math.sin(p.a + p.x * 0.02)) * 0.65;
+        ctx.globalAlpha = p.alpha * flick;
+        ctx.fillRect(p.x, p.y, p.r * 2.2, 1);
+        ctx.fillRect(p.x + p.r, p.y - p.r, 1, p.r * 2.2);
+        ctx.globalAlpha = 1;
+        p.a += 0.05;
       } else {
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);

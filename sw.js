@@ -12,6 +12,7 @@ const SHELL_FILES = [
   "./js/settings.js",
   "./js/api.js",
   "./js/series.js",
+  "./js/fields.js",
   "./js/gecko.js",
   "./js/icons.js",
   "./js/effects.js",

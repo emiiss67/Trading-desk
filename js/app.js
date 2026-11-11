@@ -4,6 +4,7 @@ import { fetchCoin, fetchSnapshot } from "./api.js";
 import { fetchOhlcv } from "./gecko.js";
 import { candlesFromCoin } from "./series.js";
 import { isMint, num, str } from "./text.js";
+import { pnlUsd, portfolioUsd, solEurFrom } from "./fields.js";
 import { formatUsd } from "./format.js";
 import { paintApp } from "./render.js";
 import { burst, countUp, effectsAllowed, toast } from "./effects.js";
@@ -17,7 +18,8 @@ const state = {
   loading: false,
   syncing: false,
   stale: false,
-  tab: "scan",
+  tab: "home",
+  solEur: null,
   overlay: null,
   filter: "all",
   query: "",
@@ -171,8 +173,8 @@ function resetLook() {
 
 function metricsFrom(snapshot) {
   return {
-    equityUsd: num(snapshot?.equity?.usd),
-    pnlUsd: num(snapshot?.today?.pnl_usd),
+    equityUsd: portfolioUsd(snapshot),
+    pnlUsd: pnlUsd(snapshot),
     walletSol: num(snapshot?.wallet?.sol),
   };
 }
@@ -220,6 +222,36 @@ function adopt(snapshot) {
   state.snapshot = snapshot;
   state.stale = false;
   state.error = "";
+  const quoted = solEurFrom(snapshot);
+  if (quoted != null && quoted > 0) state.solEur = quoted;
+  else ensureSolEur();
+}
+
+const EUR_KEY = "desk.sol_eur.v1";
+
+async function ensureSolEur() {
+  if (state.solEur) return;
+  try {
+    const cached = JSON.parse(localStorage.getItem(EUR_KEY) || "null");
+    if (cached && Number.isFinite(cached.eur) && Date.now() - cached.at < 5 * 60 * 1000) {
+      state.solEur = cached.eur;
+      return;
+    }
+  } catch { /* ignore */ }
+  try {
+    const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=eur", {
+      credentials: "omit",
+      cache: "no-store",
+      referrerPolicy: "no-referrer",
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    const eur = num(data?.solana?.eur);
+    if (eur == null || eur <= 0) return;
+    state.solEur = eur;
+    try { localStorage.setItem(EUR_KEY, JSON.stringify({ eur, at: Date.now() })); } catch { /* ignore */ }
+    if (state.tab === "home" || state.tab === "desk") render({ keepScroll: true });
+  } catch { /* price is optional */ }
 }
 
 function errorText(err) {
