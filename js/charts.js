@@ -461,14 +461,21 @@ export function mountMarkedLine(canvas, points, markers, { formatY, style = "are
         ctx.globalAlpha = 1;
       }
     } else {
-    ctx.strokeStyle = col.accent;
-    ctx.lineWidth = 2;
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(pad.l, 0, plotW * reveal, h);
-    ctx.clip();
-    ctx.stroke();
-    ctx.restore();
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(pad.l, 0, Math.max(plotW * reveal, 0), h);
+      ctx.clip();
+      ctx.beginPath();
+      points.forEach((point, i) => {
+        const x = xOf(i);
+        const y = yOf(point.v);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = col.accent;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
     }
     const pulse = reduce ? 1 : 1 + Math.sin(performance.now() / 280) * 0.16;
     for (const marker of markers) {
