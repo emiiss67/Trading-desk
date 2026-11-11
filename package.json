@@ -1,0 +1,9 @@
+{
+  "name": "trading-desk",
+  "private": true,
+  "type": "module",
+  "description": "Static read-only phone desk. No build step and no runtime dependencies.",
+  "scripts": {
+    "test": "node --test"
+  }
+}

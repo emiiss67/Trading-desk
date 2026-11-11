@@ -1,0 +1,446 @@
+{
+  "schema_version": 1,
+  "sample": true,
+  "generated_at": "2026-11-10T17:39:45Z",
+  "desk": {
+    "title": "Sample night desk",
+    "mode": "paper",
+    "run_state": "live",
+    "compounder_pct": 35
+  },
+  "wallet": {
+    "sol": 3.15,
+    "sol_usd": 186.4
+  },
+  "equity": {
+    "usd": 791.89,
+    "free_cash_usd": 587.16,
+    "start_usd": 640
+  },
+  "today": {
+    "pnl_usd": 41.2,
+    "pnl_pct": 5.49,
+    "cap_usd": 150,
+    "cap_used_usd": 41.2,
+    "cap_status": "ok"
+  },
+  "health": {
+    "status": "ok",
+    "summary": "Scanner, gates, and broker answered on the last pass.",
+    "bots": [
+      {
+        "id": "scanner",
+        "name": "Scanner",
+        "status": "ok",
+        "detail": "Reading new curves.",
+        "last_seen": "2026-11-10T17:39:33Z"
+      },
+      {
+        "id": "gates",
+        "name": "Gates",
+        "status": "ok",
+        "detail": "Last coin cleared liquidity and holder checks.",
+        "last_seen": "2026-11-10T17:39:25Z"
+      },
+      {
+        "id": "broker",
+        "name": "Broker",
+        "status": "ok",
+        "detail": "Paper fills only. No live orders.",
+        "last_seen": "2026-11-10T17:39:05Z"
+      }
+    ]
+  },
+  "equity_curve": [
+    {
+      "t": "2026-11-10T05:54:45Z",
+      "equity_usd": 750.69
+    },
+    {
+      "t": "2026-11-10T06:09:45Z",
+      "equity_usd": 756.0
+    },
+    {
+      "t": "2026-11-10T06:24:45Z",
+      "equity_usd": 761.35
+    },
+    {
+      "t": "2026-11-10T06:39:45Z",
+      "equity_usd": 763.19
+    },
+    {
+      "t": "2026-11-10T06:54:45Z",
+      "equity_usd": 769.83
+    },
+    {
+      "t": "2026-11-10T07:09:45Z",
+      "equity_usd": 772.81
+    },
+    {
+      "t": "2026-11-10T07:24:45Z",
+      "equity_usd": 777.31
+    },
+    {
+      "t": "2026-11-10T07:39:45Z",
+      "equity_usd": 775.59
+    },
+    {
+      "t": "2026-11-10T07:54:45Z",
+      "equity_usd": 773.58
+    },
+    {
+      "t": "2026-11-10T08:09:45Z",
+      "equity_usd": 771.01
+    },
+    {
+      "t": "2026-11-10T08:24:45Z",
+      "equity_usd": 769.27
+    },
+    {
+      "t": "2026-11-10T08:39:45Z",
+      "equity_usd": 776.62
+    },
+    {
+      "t": "2026-11-10T08:54:45Z",
+      "equity_usd": 775.29
+    },
+    {
+      "t": "2026-11-10T09:09:45Z",
+      "equity_usd": 779.31
+    },
+    {
+      "t": "2026-11-10T09:24:45Z",
+      "equity_usd": 780.48
+    },
+    {
+      "t": "2026-11-10T09:39:45Z",
+      "equity_usd": 780.34
+    },
+    {
+      "t": "2026-11-10T09:54:45Z",
+      "equity_usd": 781.87
+    },
+    {
+      "t": "2026-11-10T10:09:45Z",
+      "equity_usd": 784.22
+    },
+    {
+      "t": "2026-11-10T10:24:45Z",
+      "equity_usd": 783.61
+    },
+    {
+      "t": "2026-11-10T10:39:45Z",
+      "equity_usd": 789.41
+    },
+    {
+      "t": "2026-11-10T10:54:45Z",
+      "equity_usd": 792.93
+    },
+    {
+      "t": "2026-11-10T11:09:45Z",
+      "equity_usd": 792.18
+    },
+    {
+      "t": "2026-11-10T11:24:45Z",
+      "equity_usd": 796.34
+    },
+    {
+      "t": "2026-11-10T11:39:45Z",
+      "equity_usd": 799.36
+    },
+    {
+      "t": "2026-11-10T11:54:45Z",
+      "equity_usd": 800.62
+    },
+    {
+      "t": "2026-11-10T12:09:45Z",
+      "equity_usd": 796.82
+    },
+    {
+      "t": "2026-11-10T12:24:45Z",
+      "equity_usd": 795.61
+    },
+    {
+      "t": "2026-11-10T12:39:45Z",
+      "equity_usd": 797.25
+    },
+    {
+      "t": "2026-11-10T12:54:45Z",
+      "equity_usd": 793.91
+    },
+    {
+      "t": "2026-11-10T13:09:45Z",
+      "equity_usd": 794.04
+    },
+    {
+      "t": "2026-11-10T13:24:45Z",
+      "equity_usd": 791.74
+    },
+    {
+      "t": "2026-11-10T13:39:45Z",
+      "equity_usd": 795.55
+    },
+    {
+      "t": "2026-11-10T13:54:45Z",
+      "equity_usd": 794.53
+    },
+    {
+      "t": "2026-11-10T14:09:45Z",
+      "equity_usd": 795.18
+    },
+    {
+      "t": "2026-11-10T14:24:45Z",
+      "equity_usd": 793.99
+    },
+    {
+      "t": "2026-11-10T14:39:45Z",
+      "equity_usd": 797.03
+    },
+    {
+      "t": "2026-11-10T14:54:45Z",
+      "equity_usd": 802.21
+    },
+    {
+      "t": "2026-11-10T15:09:45Z",
+      "equity_usd": 797.72
+    },
+    {
+      "t": "2026-11-10T15:24:45Z",
+      "equity_usd": 793.56
+    },
+    {
+      "t": "2026-11-10T15:39:45Z",
+      "equity_usd": 792.27
+    },
+    {
+      "t": "2026-11-10T15:54:45Z",
+      "equity_usd": 789.36
+    },
+    {
+      "t": "2026-11-10T16:09:45Z",
+      "equity_usd": 787.34
+    },
+    {
+      "t": "2026-11-10T16:24:45Z",
+      "equity_usd": 789.92
+    },
+    {
+      "t": "2026-11-10T16:39:45Z",
+      "equity_usd": 789.46
+    },
+    {
+      "t": "2026-11-10T16:54:45Z",
+      "equity_usd": 791.97
+    },
+    {
+      "t": "2026-11-10T17:09:45Z",
+      "equity_usd": 793.89
+    },
+    {
+      "t": "2026-11-10T17:24:45Z",
+      "equity_usd": 791.19
+    },
+    {
+      "t": "2026-11-10T17:39:45Z",
+      "equity_usd": 791.89
+    }
+  ],
+  "scanned": [
+    {
+      "mint": "ni8hxfAMsYxTNqx7cc1MQGdweifo4iQ9tVVfVYyCDidS",
+      "name": "Glass Eel",
+      "symbol": "EEL",
+      "icon": "icons/eel.svg",
+      "scanned_at": "2026-11-10T17:36:45Z",
+      "created_at": "2026-11-10T11:39:45Z",
+      "decision": "watching",
+      "reason": "Fresh curve. Waiting on a second quiet minute.",
+      "price_usd": 6.2e-06,
+      "market_cap_usd": 11400
+    },
+    {
+      "mint": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+      "name": "Bonk",
+      "symbol": "BONK",
+      "icon": "icons/bonk.svg",
+      "scanned_at": "2026-11-10T17:21:45Z",
+      "created_at": "2024-05-24T17:39:45Z",
+      "decision": "watching",
+      "reason": "Public mint so the chart can fall back to GeckoTerminal. Sample gates, not a signal.",
+      "price_usd": 2.82e-06,
+      "market_cap_usd": 248000000
+    },
+    {
+      "mint": "C99nWSDkfrwNjwd7LgcsFy6hThb2HLpj7T4n1gwMYhgp",
+      "name": "Copper Moth",
+      "symbol": "CPTH",
+      "icon": "icons/cpth.svg",
+      "scanned_at": "2026-11-10T16:12:45Z",
+      "created_at": "2026-11-10T08:39:45Z",
+      "decision": "bought",
+      "reason": "Passed gates. Sold into strength.",
+      "price_usd": 1.12e-05,
+      "market_cap_usd": 18600
+    },
+    {
+      "mint": "7GTeEPSrYKuRXbNvuD4Qsy3gYQWiyEypwYjmUTz1bM8j",
+      "name": "Harbor",
+      "symbol": "HRBR",
+      "icon": "icons/hrbr.svg",
+      "scanned_at": "2026-11-10T15:48:45Z",
+      "created_at": "2026-11-09T21:39:45Z",
+      "decision": "bought",
+      "reason": "Passed gates. Size 0.40 SOL.",
+      "price_usd": 3.7e-05,
+      "market_cap_usd": 28400
+    },
+    {
+      "mint": "BqnmJfZpSUe2Tu2mSCUJ5wrdkrATVi1XAgUz46oku6e8",
+      "name": "Nightglass",
+      "symbol": "NGLS",
+      "icon": "icons/ngls.svg",
+      "scanned_at": "2026-11-10T15:05:45Z",
+      "created_at": "2026-11-10T12:39:45Z",
+      "decision": "bought",
+      "reason": "Passed gates. Size 0.55 SOL.",
+      "price_usd": 2.44e-05,
+      "market_cap_usd": 64200
+    },
+    {
+      "mint": "5WWZAL2eQhWzoMBPDt6sn5B1THzoDmMWRbnSbA5X4Q3k",
+      "name": "Paper Crane",
+      "symbol": "CRNE",
+      "icon": "icons/crne.svg",
+      "scanned_at": "2026-11-10T14:40:45Z",
+      "created_at": "2026-11-08T17:39:45Z",
+      "decision": "watching",
+      "reason": "Clean so far. Holders still thin.",
+      "price_usd": 1.33e-05,
+      "market_cap_usd": 22100
+    },
+    {
+      "mint": "4UyZxsHsCcoaFuG1D1ZmWRk9hr91dWN1mTQLSDaSgK9M",
+      "name": "Violet Kiln",
+      "symbol": "VLKN",
+      "icon": "icons/missing-violet.svg",
+      "scanned_at": "2026-11-10T14:22:45Z",
+      "created_at": "2026-11-10T13:39:45Z",
+      "decision": "rejected",
+      "reason": "Top holder 28% is over the 20% ceiling.",
+      "price_usd": 3.1e-05,
+      "market_cap_usd": 41000
+    },
+    {
+      "mint": "Mg4Szu542qoMjBipJxAqobWSCiQajMi8j5W7ZSnYGgcF",
+      "name": "Lowtide",
+      "symbol": "LOWT",
+      "icon": "icons/lowt.svg",
+      "scanned_at": "2026-11-10T14:10:45Z",
+      "created_at": "2026-11-10T16:59:45Z",
+      "decision": "rejected",
+      "reason": "Liquidity $2.1k is under the $8k floor.",
+      "price_usd": 4.4e-06,
+      "market_cap_usd": 6900
+    }
+  ],
+  "positions": [
+    {
+      "mint": "BqnmJfZpSUe2Tu2mSCUJ5wrdkrATVi1XAgUz46oku6e8",
+      "name": "Nightglass",
+      "symbol": "NGLS",
+      "icon": "icons/ngls.svg",
+      "stop_usd": 1.4924e-05,
+      "take_profit_usd": 3.458e-05,
+      "opened_at": "2026-11-10T15:05:45Z",
+      "qty_tokens": 5632967.033,
+      "entry_usd": 1.82e-05,
+      "mark_usd": 2.44e-05,
+      "cost_usd": 102.52,
+      "value_usd": 137.44,
+      "pnl_usd": 34.92,
+      "pnl_pct": 34.07
+    },
+    {
+      "mint": "7GTeEPSrYKuRXbNvuD4Qsy3gYQWiyEypwYjmUTz1bM8j",
+      "name": "Harbor",
+      "symbol": "HRBR",
+      "icon": "icons/hrbr.svg",
+      "stop_usd": 3.444e-05,
+      "take_profit_usd": 6.97e-05,
+      "opened_at": "2026-11-10T15:48:45Z",
+      "qty_tokens": 1818536.5854,
+      "entry_usd": 4.1e-05,
+      "mark_usd": 3.7e-05,
+      "cost_usd": 74.56,
+      "value_usd": 67.29,
+      "pnl_usd": -7.27,
+      "pnl_pct": -9.76
+    }
+  ],
+  "activity": [
+    {
+      "id": "sample-fill-eel-skip",
+      "mint": "C99nWSDkfrwNjwd7LgcsFy6hThb2HLpj7T4n1gwMYhgp",
+      "name": "Copper Moth",
+      "symbol": "CPTH",
+      "icon": "icons/cpth.svg",
+      "side": "sell",
+      "at": "2026-11-10T16:55:45Z",
+      "qty_tokens": 7169230.7692,
+      "price_usd": 1.12e-05,
+      "sol": 0.43,
+      "usd": 80.3,
+      "pnl_usd": 15.06,
+      "pnl_pct": 23.08,
+      "tx": "hwC7YpbUopLzLQomS6J1m7SkGxqRPxZTyHf4RrpSahxc9VbSC3udz6GtvjBGLf7BoekA4i25SodbahP1ZHegKbLb"
+    },
+    {
+      "id": "sample-fill-cpth-buy",
+      "mint": "C99nWSDkfrwNjwd7LgcsFy6hThb2HLpj7T4n1gwMYhgp",
+      "name": "Copper Moth",
+      "symbol": "CPTH",
+      "icon": "icons/cpth.svg",
+      "side": "buy",
+      "at": "2026-11-10T16:12:45Z",
+      "qty_tokens": 7169230.7692,
+      "price_usd": 9.1e-06,
+      "sol": 0.35,
+      "usd": 65.24,
+      "pnl_usd": null,
+      "pnl_pct": null,
+      "tx": "4eV9fKzHCbbneFoeKLdUPZ7JuukbR89SKTg7jKgDXPZ9U1hfD7cQMTxYdGrmvVFSuuBvmq5jDG38j7msjukg7Ask"
+    },
+    {
+      "id": "sample-fill-hrbr",
+      "mint": "7GTeEPSrYKuRXbNvuD4Qsy3gYQWiyEypwYjmUTz1bM8j",
+      "name": "Harbor",
+      "symbol": "HRBR",
+      "icon": "icons/hrbr.svg",
+      "side": "buy",
+      "at": "2026-11-10T15:48:45Z",
+      "qty_tokens": 1818536.5854,
+      "price_usd": 4.1e-05,
+      "sol": 0.4,
+      "usd": 74.56,
+      "pnl_usd": null,
+      "pnl_pct": null,
+      "tx": "XWb7KLqXwrM3UDHNDm4n6XDapR8A8PtjrTzPiinF9kpS7GvpFGuYbqTic6N7EASrH9ESz76wpGfejnEK3wRezR61"
+    },
+    {
+      "id": "sample-fill-ngls",
+      "mint": "BqnmJfZpSUe2Tu2mSCUJ5wrdkrATVi1XAgUz46oku6e8",
+      "name": "Nightglass",
+      "symbol": "NGLS",
+      "icon": "icons/ngls.svg",
+      "side": "buy",
+      "at": "2026-11-10T15:05:45Z",
+      "qty_tokens": 5632967.033,
+      "price_usd": 1.82e-05,
+      "sol": 0.55,
+      "usd": 102.52,
+      "pnl_usd": null,
+      "pnl_pct": null,
+      "tx": "fe3oy3sgUpGDm5TzWHdHSDsSBDMEG7dk1FJvg58CRrFscMiFCM8S4tuV1Lh2wAeYVvLoVDSjsgCDVUDGndhefqEV"
+    }
+  ]
+}
