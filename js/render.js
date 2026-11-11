@@ -731,7 +731,7 @@ function lookView(state, actions, rise) {
     group("This device", el("div", {}, [
       el("p", { class: "quiet", text: host ? `Saved link · ${host}` : "No link saved." }),
       tail ? el("p", { class: "quiet", text: `Access id ends in ${tail}` }) : null,
-      el("p", { class: "quiet", text: "In Safari: Share, then Add to Home Screen. The saved link opens the desk full screen." }),
+      el("p", { class: "quiet", text: "In Safari, while this page shows the private link, use Share > Add to Home Screen." }),
       el("button", {
         type: "button",
         class: "danger haptic",
@@ -833,7 +833,7 @@ function lockScreen(state) {
   return el("section", { class: "lock" }, [
     el("p", { class: "kicker", text: "Private" }),
     el("h1", { text: "Desk" }),
-    el("p", { text: "This phone is locked. Open the private link from Telegram and the desk will load here." }),
+    el("p", { text: "This phone is locked. Open the private link in Safari first, then Share > Add to Home Screen." }),
     state.invalidHash ? el("p", { class: "lock-bad", text: "This link isn’t valid. Ask for a new one in Telegram." }) : null,
   ]);
 }
