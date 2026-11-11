@@ -16,9 +16,9 @@ import {
 import { coinIcon, icon } from "./icons.js";
 import { ACCENTS, BACKGROUNDS, CHART_STYLES, FONT_FACES, PARTICLE_STYLES, THEMES, TIMEFRAMES } from "./settings.js";
 import { mountCandles, mountMarkedLine, mountSpark } from "./charts.js";
-import { coinStatGrid, curvePoints, entryPrice, iconField, iconSources, looksTechnical, marketCapLabel, mergedCoin, plainReason, portfolioUsd, telegramTradeUrl, tokenSupply, tradeLevels } from "./fields.js";
+import { candlesPendingText, coinStatGrid, curvePoints, entryPrice, iconField, iconSources, looksTechnical, marketCapLabel, mergedCoin, plainReason, portfolioUsd, telegramTradeUrl, tokenSupply, tradeLevels } from "./fields.js";
 import { safeImageUrl } from "./api.js";
-import { candlesFromCoin, normalizeTrades } from "./series.js";
+import { CANDLE_FRAMES, candlesFromCoin, normalizeTrades, pickTimeframe } from "./series.js";
 import { countUp, effectsAllowed } from "./effects.js";
 import { hostOf } from "./link.js";
 
@@ -766,12 +766,16 @@ function detailBody(state, actions, coin, row, tf) {
   const links = externalLinks(coin.mint);
   queueMicrotask(() => hydrateChart(region, state, coin, tf));
   return el("div", {}, [
-    el("div", { class: "tf" }, TIMEFRAMES.map((id) => el("button", {
-      type: "button",
-      class: "haptic",
-      "aria-pressed": tf === id ? "true" : "false",
-      onclick: () => actions.setTimeframe(id),
-    }, [id]))),
+    el("div", { class: "tf" }, TIMEFRAMES.map((id) => {
+      const empty = candlesFromCoin(coin, id).length < 1;
+      return el("button", {
+        type: "button",
+        class: empty ? "haptic is-empty" : "haptic",
+        "aria-pressed": tf === id ? "true" : "false",
+        "aria-label": empty ? `${id}, no candles` : id,
+        onclick: () => actions.setTimeframe(id),
+      }, [id]);
+    })),
     region,
     block("Stats", el("div", { class: "stats" }, stats.map(([label, value]) => el("div", { class: "stat" }, [
       el("span", { text: label }),
@@ -845,8 +849,11 @@ function tradeList(trades) {
 function hydrateChart(region, state, coin, tf) {
   if (!region.isConnected) return;
   const local = candlesFromCoin(coin, tf);
-  if (local.length < 2) {
-    region.replaceChildren(el("p", { class: "chart-status", text: "Not enough trades yet" }));
+  if (local.length < 1) {
+    const any = CANDLE_FRAMES.some((frame) => candlesFromCoin(coin, frame).length >= 1);
+    const pending = candlesPendingText(coin);
+    const text = any ? `No ${tf} candles yet` : (pending || "Not enough trades yet");
+    region.replaceChildren(el("p", { class: "chart-status", text }));
     return;
   }
   const supply = tokenSupply(mergedCoin(coin, rowByMint(state, coin.mint)));

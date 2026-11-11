@@ -108,9 +108,11 @@ export function fetchCoin(base, mint, signal) {
 
 export function safeImageUrl(value, base) {
   if (typeof value !== "string" || value.length === 0 || value.length > 2000) return "";
+  // A leading slash is the data base, not the site root. Tunnel icons are /icons/<mint>.png.
+  const relative = value.startsWith("/") && !value.startsWith("//") ? value.slice(1) : value;
   try {
     const root = base.endsWith("/") ? base : `${base}/`;
-    const url = new URL(value, root);
+    const url = new URL(relative, root);
     if (url.username || url.password) return "";
     if (url.protocol !== "https:" && url.protocol !== "http:") return "";
     return url.href;

@@ -3,11 +3,11 @@ import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { describe, it } from "node:test";
 import { addressWithLink, encodeBase64Url, parseLinkHash, parsePrivateLink } from "../js/link.js";
 import { formatCompactUsd, formatPair, formatUsd, formatVilnius } from "../js/format.js";
-import { clampWindow, candlesFromCoin, normalizeCandles } from "../js/series.js";
+import { clampWindow, candlesFromCoin, normalizeCandles, pickTimeframe } from "../js/series.js";
 import { parseOhlcv, pickPool } from "../js/gecko.js";
 import { safeImageUrl } from "../js/api.js";
 import { isMint } from "../js/text.js";
-import { coinStatGrid, iconSources, ipfsCid, looksTechnical, loadQuote, marketCapLabel, plainReason, pnlPoints, saveQuote, telegramTradeUrl, tokenSupply, tradeLevels } from "../js/fields.js";
+import { candlesPendingText, coinStatGrid, iconSources, ipfsCid, looksTechnical, loadQuote, marketCapLabel, plainReason, pnlPoints, saveQuote, telegramTradeUrl, tokenSupply, tradeLevels } from "../js/fields.js";
 import { sanitizeSettings } from "../js/settings.js";
 
 describe("private link", () => {
@@ -190,6 +190,22 @@ describe("charts and gecko shapes", () => {
     assert.equal(rows[0].v, 0);
     assert.equal(safeImageUrl("javascript:alert(1)", "https://example.com/sample/"), "");
     assert.equal(safeImageUrl("icons/ngls.svg", "https://example.com/sample"), "https://example.com/sample/icons/ngls.svg");
+    const mint = "BqnmJfZpSUe2Tu2mSCUJ5wrdkrATVi1XAgUz46oku6e8";
+    const base = "https://tunnel.example/desk/sample";
+    assert.equal(safeImageUrl(`/icons/${mint}.png`, base), `${base}/icons/${mint}.png`);
+    assert.equal(safeImageUrl(`/icons/${mint}.png`, "http://127.0.0.1:8787/book"), `http://127.0.0.1:8787/book/icons/${mint}.png`);
+    const one = { t: 100, o: 1, h: 2, l: 0.5, c: 1.5, v: 3 };
+    const live = {
+      candles_pending_reason: "Waiting on the first print.",
+      candles: { "1m": [one], "5m": [], "15m": [], "1h": [] },
+    };
+    assert.equal(candlesFromCoin(live, "1m").length, 1);
+    assert.equal(pickTimeframe(live, "5m"), "1m");
+    assert.equal(pickTimeframe({ candles: { "5m": [one], "1m": [one] } }, "5m"), "5m");
+    assert.equal(pickTimeframe({ candles: {} }, "5m"), "5m");
+    assert.equal(candlesPendingText({ candles_pending_reason: "Waiting on the first print." }), "Waiting on the first print.");
+    assert.equal(candlesPendingText({ candles_pending_reason: "source=pump authorities=pass" }), "");
+    assert.deepEqual(clampWindow(1, 0, 1), { start: 0, count: 1 });
   });
 });
 

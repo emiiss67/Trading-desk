@@ -105,7 +105,7 @@ Regenerate the committed fixture with `python3 tools/make_sample.py`. Those file
 | `positions[]` | positions | Open book |
 | `activity[]` | fills | Buys and sells |
 
-Coin ref: `mint`, `name`, `symbol`, `icon` or `icon_url` (HTTPS), `scanned_at`, `created_at`, `decision` (`bought` \| `rejected` \| `watching` \| `deferred`), `reason_plain`, `price_usd`, `market_cap_usd`, `market_cap_pending`. A deferred coin (`decision` or `status` of `deferred`) is shown as “Checking again soon”.
+Coin ref: `mint`, `name`, `symbol`, `icon` or `icon_url`, `scanned_at`, `created_at`, `decision` (`bought` \| `rejected` \| `watching` \| `deferred`), `reason_plain`, `price_usd`, `market_cap_usd`, `market_cap_pending`. `icon_url` may be HTTPS or a path such as `/icons/<mint>.png` on the data base. A deferred coin (`decision` or `status` of `deferred`) is shown as “Checking again soon”.
 
 Position: `mint`, `name`, `symbol`, `icon`, `qty_tokens`, `entry_usd`, `mark_usd`, `cost_usd`, `value_usd`, `pnl_usd`, `pnl_pct`, `stop_usd`, `take_profit_usd`, `opened_at`.
 
@@ -133,13 +133,14 @@ Fill: `id`, `mint`, `name`, `symbol`, `icon`, `side` (`buy` \| `sell`), `at`, `q
 | `bonding_curve_pct` | number | 0–100, or a fraction from 0 to 1. |
 | `fdv_usd` | number | |
 | `market_cap_source` | string | Shown as Source. A `key=value` string is hidden. |
-| `icon_url` | string | HTTPS image. The initials badge is used only if that image errors. |
+| `icon_url` | string | HTTPS, or a path on the data base (`/icons/<mint>.png`). A leading slash stays under that base. The initials badge is used only if the image errors. |
 | `reason_plain` | string | The only reason text the phone shows. Strings such as `source=`, `authorities=`, and `extensions=` are dropped. |
 | `holders` | number | |
 | `top_holder_pct` | number | Percent, not a fraction |
 | `gates[]` | objects | `id`, `label`, `pass` (boolean), `detail` or `reason_plain` |
 | `trades[]` | objects | `at`, `side`, `price_usd`, `tx`. Drawn on the chart |
-| `candles` | object | Keys `1m`, `5m`, `15m`, `1h`. Each candle is `{ "time" or "t", "open" or "o", "high" or "h", "low" or "l", "close" or "c", "volume_usd" or "v" }`. `time` is unix seconds. Fewer than two candles shows “Not enough trades yet”. |
+| `candles` | object | Keys `1m`, `5m`, `15m`, `1h`. Each candle is `{ "time" or "t", "open" or "o", "high" or "h", "low" or "l", "close" or "c", "volume_usd" or "v" }`. `time` is unix seconds. One bar is enough to draw. Opening a coin picks the saved timeframe, then 1m, 5m, 15m, 1h, whichever has a bar first. |
+| `candles_pending_reason` | string | Plain sentence shown when every timeframe is empty. |
 
 Links to pump.fun, Solscan, and DexScreener are built from the mint. URLs inside the JSON are not used as link targets.
 
@@ -152,7 +153,7 @@ Links to pump.fun, Solscan, and DexScreener are built from the mint. URLs inside
 - **Activity** is the fill tape. Daily cap, run state, and bot health stay on Home when the file includes them. Missing numbers are omitted.
 - The floating bar is Home, Coins, Activity, and Account. Account is appearance only.
 - Coin charts draw the entry, a stop ( `stop_usd`, otherwise entry × 0.6 ), a target ( `take_profit_usd`, otherwise 2× entry ), and a trailing level when the file has one, only while that coin is an open position.
-- Icons prefer `icon_url`. `icon`, `image`, `image_url`, and `logo` still work, including `ipfs://` through ipfs.io, dweb.link, cloudflare-ipfs.com, then cf-ipfs.com. A failed image becomes an initials badge.
+- Icons prefer `icon_url`. A path that starts with `/` is loaded from the data base (`/icons/<mint>.png` stays next to `snapshot.json`). `icon`, `image`, `image_url`, and `logo` still work, including `ipfs://` through ipfs.io, dweb.link, cloudflare-ipfs.com, then cf-ipfs.com. A failed image becomes an initials badge.
 
 ## Fields the exporter should add
 

@@ -38,10 +38,22 @@ export function normalizeCandles(rows) {
   return out;
 }
 
+export const CANDLE_FRAMES = ["1m", "5m", "15m", "1h"];
+
 export function candlesFromCoin(coin, timeframe) {
   const block = coin?.candles;
   if (!block || typeof block !== "object") return [];
   return normalizeCandles(block[timeframe]);
+}
+
+export function pickTimeframe(coin, saved) {
+  const order = [];
+  if (CANDLE_FRAMES.includes(saved)) order.push(saved);
+  for (const frame of CANDLE_FRAMES) {
+    if (!order.includes(frame)) order.push(frame);
+  }
+  const hit = order.find((frame) => candlesFromCoin(coin, frame).length >= 1);
+  return hit || (CANDLE_FRAMES.includes(saved) ? saved : "1m");
 }
 
 export function normalizeTrades(rows) {

@@ -1,6 +1,7 @@
 import { applySettings, DEFAULTS, loadSettings, saveSettings } from "./settings.js";
 import { forgetLink, linkHash, loadLink, parseLinkHash, parsePrivateLink, saveLink } from "./link.js";
 import { fetchCoin, fetchSnapshot } from "./api.js";
+import { pickTimeframe } from "./series.js";
 import { isMint, num, str } from "./text.js";
 import { loadQuote, pnlUsd, portfolioUsd, saveQuote, solEurFrom } from "./fields.js";
 import { formatUsd } from "./format.js";
@@ -129,6 +130,12 @@ function openCoin(mint) {
   if (!isMint(mint)) return;
   state.overlay = { type: "coin", mint };
   state.tradePick = null;
+  state.pickFrameFor = mint;
+  const cached = state.coinCache.get(mint);
+  if (cached?.status === "ready") {
+    state.timeframe = pickTimeframe(cached.coin, state.settings.timeframe);
+    state.pickFrameFor = "";
+  }
   history.pushState(hist(), "", sameUrl());
   if (!state.coinCache.has(mint)) state.coinCache.set(mint, { status: "loading" });
   render();
@@ -324,6 +331,10 @@ async function loadCoin(mint) {
     const coin = await fetchCoin(base, mint, controller?.signal);
     if (state.link?.base !== base) return;
     state.coinCache.set(mint, { status: "ready", coin });
+    if (state.pickFrameFor === mint) {
+      state.timeframe = pickTimeframe(coin, state.settings.timeframe);
+      state.pickFrameFor = "";
+    }
   } catch (err) {
     if (err?.name === "AbortError") return;
     const prev = state.coinCache.get(mint);
