@@ -67,7 +67,17 @@ function bucket() {
   }
 }
 
+export function linkHash(link) {
+  return `#d=${encodeBase64Url(link.base)}&k=${link.key}`;
+}
+
+export function addressWithLink(pathname, search, link) {
+  return `${pathname || "/"}${search || ""}${linkHash(link)}`;
+}
+
 export function saveLink(link) {
+  // The home-screen app has its own storage, separate from Safari.
+  // Saving here is what makes the second standalone launch work if iOS opens without the hash.
   bucket()?.setItem(STORAGE_KEY, JSON.stringify({ base: link.base, key: link.key }));
 }
 

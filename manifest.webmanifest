@@ -4,7 +4,6 @@
   "description": "Private read-only phone desk for scanned coins.",
   "lang": "en",
   "id": "./",
-  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#14140f",

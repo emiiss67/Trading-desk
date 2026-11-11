@@ -1,5 +1,5 @@
 import { applySettings, DEFAULTS, loadSettings, saveSettings } from "./settings.js";
-import { forgetLink, loadLink, parseLinkHash, saveLink } from "./link.js";
+import { forgetLink, linkHash, loadLink, parseLinkHash, saveLink } from "./link.js";
 import { fetchCoin, fetchSnapshot } from "./api.js";
 import { fetchOhlcv } from "./gecko.js";
 import { candlesFromCoin } from "./series.js";
@@ -87,6 +87,12 @@ function render(opts) {
 
 function sameUrl() {
   return `${location.pathname}${location.search}${location.hash}`;
+}
+
+function pinPrivateHash() {
+  // Keep #d=&k= in the address bar. iOS Add to Home Screen saves that URL, not Safari's localStorage.
+  const hash = state.link ? linkHash(state.link) : location.hash;
+  history.replaceState(hist(), "", `${location.pathname}${location.search}${hash}`);
 }
 
 function hist() {
@@ -413,6 +419,7 @@ function applyLocation() {
     }
     const changed = state.link?.base !== parsed.base;
     state.invalidHash = false;
+    // First standalone launch has the hash and empty storage. Persist it there.
     saveLink(parsed);
     state.link = parsed;
     return changed || !state.snapshot;
@@ -435,10 +442,12 @@ function onPop(event) {
 function boot() {
   state.timeframe = state.settings.timeframe;
   const shouldLoad = applyLocation();
-  history.replaceState(hist(), "", sameUrl());
+  pinPrivateHash();
   window.addEventListener("popstate", onPop);
   window.addEventListener("hashchange", () => {
-    if (applyLocation()) refresh();
+    const shouldLoad = applyLocation();
+    pinPrivateHash();
+    if (shouldLoad) refresh();
     else render();
   });
   document.addEventListener("visibilitychange", () => {

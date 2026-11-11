@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { describe, it } from "node:test";
-import { encodeBase64Url, parseLinkHash } from "../js/link.js";
+import { addressWithLink, encodeBase64Url, parseLinkHash } from "../js/link.js";
 import { formatPair, formatUsd, formatVilnius } from "../js/format.js";
 import { clampWindow, candlesFromCoin, normalizeCandles } from "../js/series.js";
 import { parseOhlcv, pickPool } from "../js/gecko.js";
@@ -17,6 +17,18 @@ describe("private link", () => {
     assert.equal(parsed.base, base);
     assert.equal(parsed.key, "sample-desk-key-1");
     assert.equal(hash.includes(base), false);
+  });
+
+  it("keeps the private hash in the address that Add to Home Screen captures", () => {
+    const base = "https://emiiss67.github.io/Trading-desk/sample";
+    const parsed = parseLinkHash(`#d=${encodeBase64Url(base)}&k=sample-desk-key-1`);
+    const captured = addressWithLink("/Trading-desk/", "", parsed);
+    assert.match(captured, /^\/Trading-desk\/#d=[A-Za-z0-9_-]+&k=sample-desk-key-1$/);
+    assert.equal(parseLinkHash(captured.slice(captured.indexOf("#"))).base, base);
+    const manifest = JSON.parse(readFileSync(new URL("../manifest.webmanifest", import.meta.url), "utf8"));
+    assert.equal(Object.hasOwn(manifest, "start_url"), false);
+    const lock = readFileSync(new URL("../js/render.js", import.meta.url), "utf8");
+    assert.match(lock, /Open the private link in Safari first, then Share > Add to Home Screen/);
   });
 
   it("rejects missing, short, and non-https links", () => {

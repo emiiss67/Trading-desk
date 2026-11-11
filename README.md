@@ -21,8 +21,9 @@ https://<pages-host>/<repo>/#d=<base64url>&k=<access-id>
 - `d` is the data base URL, base64url-encoded (UTF-8, no padding). Example data base: `https://<pages-host>/<repo>/sample`
 - `k` is a random id, 8–128 characters from `[A-Za-z0-9_-]`
 - The hash is never sent to a server. With no hash, or a bad one, the phone shows a lock screen and no desk data.
-- A valid link is stored in `localStorage` so Add to Home Screen still opens the desk.
-- **Forget this device** (Appearance) deletes that saved link and any cached JSON.
+- After a valid link opens, the app keeps `#d` and `k` in the address bar. Add to Home Screen from that Safari page so the icon launches the same URL, hash included. The manifest has no `start_url`, because iOS would otherwise open the icon without the hash.
+- iOS home-screen apps do not share Safari storage. The first launch from the icon reads the hash and saves the link into the home-screen app’s own `localStorage`.
+- **Forget this device** (Appearance) deletes that saved link, any cached JSON, and the hash.
 
 This is not authentication. Anyone who knows the data base URL can read the JSON. Do not put secrets, wallet keys, or API keys in the files.
 
@@ -54,7 +55,7 @@ when the data base is `http://127.0.0.1:4173/sample`.
 1. Push `main`.
 2. Settings → Pages → Deploy from a branch → `main` → `/` (root) → Save.
 3. The site is `https://<user>.github.io/<repo>/`. Paths are relative, so a project site works without a build.
-4. On iPhone Safari, open the private link, then Share → Add to Home Screen. The manifest and Apple meta tags open it full screen.
+4. On iPhone, open the private link in Safari first (the address bar keeps `#d` and `k`), then Share → Add to Home Screen. Delete an older home-screen icon that was added before this fix and add it again from that page.
 
 `.nojekyll` is included so GitHub Pages serves the directories as-is.
 
