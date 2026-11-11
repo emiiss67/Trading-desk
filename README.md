@@ -124,6 +124,15 @@ Fill: `id`, `mint`, `name`, `symbol`, `icon`, `side` (`buy` \| `sell`), `at`, `q
 | `price_usd`, `liquidity_usd` | number | |
 | `market_cap_usd` | number or null | Shown on the list, the detail page, and open positions. Null with `market_cap_pending` shows “Updating…”. |
 | `market_cap_pending` | boolean | |
+| `supply` or `token_supply` | number | Optional. Used to turn candle prices into market cap. If omitted, the phone uses `market_cap_usd / price_usd`. |
+| `volume_5m_usd`, `volume_1h_usd`, `volume_24h_usd` | number | Optional. Otherwise summed from candles when the series is long enough. |
+| `change_5m_pct`, `change_1h_pct`, `change_24h_pct` | number | Optional percent points. Otherwise taken from candles when the series covers the window. |
+| `buyers`, `sellers`, `buys`, `sells` | number | Not in the sample export. The grid shows “Updating…” until the server sends them. |
+| `top10_holder_pct` | number | Top 10 holders. `top_holder_pct` stays the single largest wallet. |
+| `dev_holding_pct` | number | |
+| `bonding_curve_pct` | number | 0–100, or a fraction from 0 to 1. |
+| `fdv_usd` | number | |
+| `market_cap_source` | string | Shown as Source. A `key=value` string is hidden. |
 | `icon_url` | string | HTTPS image. The initials badge is used only if that image errors. |
 | `reason_plain` | string | The only reason text the phone shows. Strings such as `source=`, `authorities=`, and `extensions=` are dropped. |
 | `holders` | number | |
@@ -138,7 +147,8 @@ Links to pump.fun, Solscan, and DexScreener are built from the mint. URLs inside
 
 - **Home** is the book: a large portfolio value (no separate P&L figure), small pills for capital in, trade count, multiplier, and today’s percent when those fields exist, and a glowing portfolio line. The line has a dashed “put in” baseline from `equity.start_usd`, an end dot, and coin-icon tags for each fill (`Buy` plus size, or the sell’s `pnl_usd`). Tags step onto extra lanes when they would overlap. Wallet SOL is shown with an EUR value from `wallet.sol_eur`, or from CoinGecko when that field is missing. Open positions, scanner counts from `scanned[]`, recent bought and rejected coins with their reasons, a value sparkline from the equity curve, and a decisions feed from `activity` sit on the same screen. LIVE / 1H / 4H / 1D / 1W / ALL slice that curve from its last timestamp.
 - **Coins** is the scan list: icon, name, symbol, market cap, age, decision, plain reason, search, and filters.
-- A coin opens the price, market cap, gates, contract copy, and a candlestick chart (1m / 5m / 15m / 1h) drawn from that coin’s `candles`. Green and red bodies, wicks, drag to pan, pinch or wheel to zoom, and a crosshair with OHLC. Entry, stop, and target are drawn when that mint is an open position. Buy and Sell sit on a bar above the tabs and open Telegram (`/buy` with 0.02, 0.05, or 0.1 SOL, `/sell` with 25, 50, or 100). The phone never holds a key. The same actions sit on each open position.
+- A coin opens a large figure, market stats, gates, contract copy, and a candlestick chart (1m / 5m / 15m / 1h) drawn from that coin’s `candles`. Tap the figure to switch between price and market cap. The choice is kept on the phone (`desk.quote.v1`). The chart axis and the crosshair use the same unit. Market cap on the chart is price × supply (`supply` or `token_supply` when present, otherwise `market_cap_usd / price_usd`). Green and red bodies, wicks, drag to pan, pinch or wheel to zoom, and a crosshair with OHLC. Entry, stop, and target are drawn when that mint is an open position. Buy and Sell sit in the page flow above the tab bar and open Telegram (`/buy` with 0.02, 0.05, or 0.1 SOL, `/sell` with 25, 50, or 100). The phone never holds a key. The same actions sit on each open position.
+- Stats always include market cap, liquidity, volume and price change for 5m / 1h / 24h, holders, buyers, sellers, buy count, sell count, top-10 holder percent, top holder, dev holding, bonding-curve progress, age, FDV, and source. A missing value says “Updating…”. Volume and price change are taken from those fields when the file has them, and otherwise from candle history when the series covers the window.
 - **Activity** is the fill tape. Daily cap, run state, and bot health stay on Home when the file includes them. Missing numbers are omitted.
 - The floating bar is Home, Coins, Activity, and Account. Account is appearance only.
 - Coin charts draw the entry, a stop ( `stop_usd`, otherwise entry × 0.6 ), a target ( `take_profit_usd`, otherwise 2× entry ), and a trailing level when the file has one, only while that coin is an open position.
